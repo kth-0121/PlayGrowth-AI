@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { PageSkeleton } from "@/components/Skeleton";
 import { Logo } from "@/components/Icon";
 import { AreaChip, MetaChip, TimeChip } from "@/components/Chip";
 import { Illustration } from "@/components/Illustration";
 import { getPlay, PLAYS } from "@/lib/recommend";
 import PlayCta from "./play-cta";
+import SaveButton from "./save-button";
 import RecommendReason from "./recommend-reason";
 
 // 놀이는 data/plays.json에 고정 → 빌드할 때 카드 페이지를 미리 만들어 둠
@@ -12,8 +15,18 @@ export function generateStaticParams() {
   return PLAYS.map((p) => ({ id: p.id }));
 }
 
-export default async function PlayDetailPage({ params }: PageProps<"/play/[id]">) {
-  const { id } = await params;
+// params는 Suspense 안에서 읽어야 화면 이동이 바로 됨 (cacheComponents)
+export default function PlayDetailPage({ params }: PageProps<"/play/[id]">) {
+  return (
+    <Suspense fallback={<PageSkeleton withTab={false} />}>
+      {params.then(({ id }) => (
+        <PlayDetail id={id} />
+      ))}
+    </Suspense>
+  );
+}
+
+function PlayDetail({ id }: { id: string }) {
   const play = getPlay(id);
   if (!play) notFound();
   const no = PLAYS.findIndex((p) => p.id === play.id) + 1;
@@ -25,7 +38,10 @@ export default async function PlayDetailPage({ params }: PageProps<"/play/[id]">
         <Link href="/" aria-label="홈으로">
           <Logo />
         </Link>
-        <span className="text-[12px] font-semibold tracking-[0.04em] text-mute">TODAY · No.{no}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-[12px] font-semibold tracking-[0.04em] text-mute">TODAY · No.{no}</span>
+          <SaveButton playId={play.id} />
+        </div>
       </header>
 
       <div className="mt-3 flex flex-wrap gap-1.5">

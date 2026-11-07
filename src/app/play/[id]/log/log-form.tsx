@@ -8,6 +8,8 @@ import { Button } from "@/components/Button";
 import { AreaChip, DONE_LABEL, REACTION_LABEL } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
+import { PageSkeleton } from "@/components/Skeleton";
+import { toast } from "@/components/Toast";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { callName } from "@/lib/copy";
 import { ageInMonths } from "@/lib/age";
@@ -25,7 +27,7 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
   const [memo, setMemo] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
 
-  if (!data) return <main className="flex-1" />;
+  if (!data) return <PageSkeleton withTab={false} />;
   const child = currentChild(data);
   if (!child) {
     return (
@@ -54,6 +56,7 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
     const logs = [...childLogs(data!, child.id), log];
     const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs);
     if (next) saveRecommendation({ childId: child.id, playId: next.play.id, reason: next.reason });
+    toast("기록했어요. 다음 놀이에 반영할게요");
     router.push("/logs");
   }
 

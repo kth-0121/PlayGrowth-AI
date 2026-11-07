@@ -8,6 +8,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { ProgressBar } from "@/components/ProgressBar";
+import { PageSkeleton } from "@/components/Skeleton";
 import { ageInMonths } from "@/lib/age";
 import { callName, josa } from "@/lib/copy";
 import { currentChild, latestSurvey, saveRecommendation, useLocalData } from "@/lib/local-store";
@@ -15,10 +16,11 @@ import { firstRecommendation } from "@/lib/recommend";
 import { AREA_ORDER, QUESTION_SET } from "@/lib/survey";
 
 // 단계·점수 대신 짧은 문장으로 (진단처럼 보이지 않게)
+// 3지선다 응답(자주=2, 가끔=1, 아직=0) 기준
 function sentence(area: Area, level: Level) {
   const name = AREA_LABEL[area];
-  if (level === 3) return `${name}: 요즘 많이 보여요`;
-  if (level === 2) return `${name}: 조금씩 보여요`;
+  if (level >= 2) return `${name}: 요즘 자주 보여요`;
+  if (level === 1) return `${name}: 가끔 보여요`;
   return `${name}: 놀이로 자주 만나 보면 좋아요`;
 }
 
@@ -27,7 +29,7 @@ export default function SurveyResultPage() {
   const data = useLocalData();
   const [noPlay, setNoPlay] = useState(false);
 
-  if (!data) return <main className="flex-1" />;
+  if (!data) return <PageSkeleton withTab={false} />;
   const child = currentChild(data);
   const survey = child && latestSurvey(data, child.id);
   if (!child || !survey) {
@@ -47,6 +49,9 @@ export default function SurveyResultPage() {
   const styleInfo = QUESTION_SET.styles[style];
   const name = callName(child.nickname);
   const first = firstRecommendation(survey.result, ageInMonths(child.birthDate));
+  // 모든 영역이 같은 답이면 고르게 자라는 중으로 안내
+  const even = AREA_ORDER.every((a) => levels[a] === levels.lang);
+  const focusAreas = even ? [] : focus;
 
   function goPlay() {
     if (!child || !first) return setNoPlay(true);
@@ -58,12 +63,14 @@ export default function SurveyResultPage() {
     <main className="flex flex-1 flex-col px-5 pb-[calc(32px+env(safe-area-inset-bottom))]">
       <PageHeader back />
       <H1 className="mt-2">
-        {focus.length > 0
-          ? `${josa(name, "과", "와")} 함께\n${focus.slice(0, 2).map((a) => AREA_LABEL[a]).join("·")} 놀이부터 해요`
+        {focusAreas.length > 0
+          ? `${josa(name, "과", "와")} 함께\n${focusAreas.slice(0, 2).map((a) => AREA_LABEL[a]).join("·")} 놀이부터 해요`
           : `${josa(name, "이", "가")} 좋아하는\n놀이로 이어가요`}
       </H1>
       <p className="mt-2 text-[13.5px] font-medium leading-[1.55] text-sub">
-        답해 주신 요즘 모습을 영역별로 정리했어요. 진단 결과가 아니에요.
+        {focusAreas.length > 0
+          ? `${focusAreas.map((a) => AREA_LABEL[a]).join(", ")} 영역 놀이를 더 추천해 드릴게요. 진단 결과가 아니라 놀이를 고르기 위한 참고예요.`
+          : "여러 영역을 골고루 섞어서 추천해 드릴게요. 진단 결과가 아니라 놀이를 고르기 위한 참고예요."}
       </p>
 
       <Card className="mt-6">
@@ -71,7 +78,7 @@ export default function SurveyResultPage() {
           {AREA_ORDER.map((a) => (
             <li key={a} className="flex flex-col gap-2">
               <p className="text-[14px] font-medium">{sentence(a, levels[a])}</p>
-              <ProgressBar value={Math.max(0.06, levels[a] / 3)} label={AREA_LABEL[a]} />
+              <ProgressBar value={Math.max(0.06, Math.min(levels[a], 2) / 2)} label={AREA_LABEL[a]} />
             </li>
           ))}
         </ul>

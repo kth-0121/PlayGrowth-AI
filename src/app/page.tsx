@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import type { Done, Play } from "@/types";
-import { Button, TextButton } from "@/components/Button";
+import { Button } from "@/components/Button";
+import { Landing } from "@/components/Landing";
+import { PageSkeleton } from "@/components/Skeleton";
 import { Card } from "@/components/Card";
 import { AreaChip, TimeChip } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
@@ -22,7 +24,6 @@ import {
   latestRecommendation,
   latestSurvey,
   saveRecommendation,
-  seedDemo,
   useLocalData,
 } from "@/lib/local-store";
 import { firstRecommendation, getPlay, nextPlay } from "@/lib/recommend";
@@ -31,30 +32,12 @@ export default function Home() {
   const router = useRouter();
   const data = useLocalData();
 
-  if (!data) return <main className={`flex-1 px-5 ${TAB_SAFE}`} />;
+  if (!data) return <PageSkeleton />;
 
   const today = new Date();
   const child = currentChild(data);
 
-  if (!child) {
-    return (
-      <main className={`flex flex-1 flex-col gap-6 px-5 ${TAB_SAFE}`}>
-        <PageHeader logo />
-        <div className="flex flex-col gap-2">
-          <p className="text-[13px] font-medium text-sub">{longDate(today)}</p>
-          <H1>{"센터를 기다리는 동안\n집에서 하루 15분 놀이해요"}</H1>
-        </div>
-        <EmptyState
-          text="아이 애칭과 생년월일을 넣으면 오늘 할 놀이가 정해져요."
-          action="아이 정보 입력"
-          href="/onboarding"
-        />
-        <TextButton onClick={seedDemo} className="self-start">
-          시연용 예시 데이터로 둘러보기
-        </TextButton>
-      </main>
-    );
-  }
+  if (!child) return <Landing />;
 
   const months = ageInMonths(child.birthDate);
   const survey = latestSurvey(data, child.id);
@@ -62,6 +45,7 @@ export default function Home() {
   const play: Play | null =
     (rec && getPlay(rec.playId)) || (survey ? (firstRecommendation(survey.result, months)?.play ?? null) : null);
   const logs = childLogs(data, child.id);
+  const draft = data.surveyDraft?.childId === child.id ? data.surveyDraft : null;
 
   function otherPlay() {
     if (!child || !play) return;
@@ -95,8 +79,12 @@ export default function Home() {
           <TodayPlay play={play} onStart={startPlay} onOther={otherPlay} />
         ) : (
           <EmptyState
-            text={`${callName(child.nickname)}에게 맞는 놀이를 고르려면 평소 모습에 대한 질문에 답해 주세요.`}
-            action="발달 상태 확인"
+            text={
+              draft
+                ? `질문 ${draft.index}개까지 답했어요. 이어서 답하면 첫 놀이가 정해져요.`
+                : `${callName(child.nickname)}에게 맞는 놀이를 고르려면 요즘 모습에 대한 질문 9개에 답해 주세요.`
+            }
+            action={draft ? "이어서 답하기" : "발달 상태 확인"}
             href="/survey"
           />
         )}

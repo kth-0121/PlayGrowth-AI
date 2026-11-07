@@ -8,6 +8,8 @@ import { Fab, TextButton } from "@/components/Button";
 import { AreaChip, ReactionTag } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
+import { Illustration } from "@/components/Illustration";
+import { PageSkeleton } from "@/components/Skeleton";
 import { PageHeader } from "@/components/PageHeader";
 import { TAB_FAB_SAFE, TAB_SAFE } from "@/components/TabBar";
 import { callName } from "@/lib/copy";
@@ -19,7 +21,7 @@ export default function LogsPage() {
   const data = useLocalData();
   const [selected, setSelected] = useState<string | null>(null);
 
-  if (!data) return <main className={`flex-1 ${TAB_SAFE}`} />;
+  if (!data) return <PageSkeleton />;
   const child = currentChild(data);
   if (!child) {
     return (
@@ -148,7 +150,7 @@ function TimelineItem({ log, recent }: { log: PlayLog; recent: boolean }) {
         aria-hidden
       />
       <p className="text-[12px] font-semibold text-mute">{logTimeLabel(log.createdAt)}</p>
-      <article className="mt-2 rounded-[16px] bg-card p-3.5">
+      <Link href={`/logs/${log.id}`} className="pressable mt-2 block rounded-[16px] bg-card p-3.5">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-[15px] font-bold leading-[1.35]">{play?.title ?? "삭제된 놀이"}</h2>
           {play && <AreaChip area={play.area} />}
@@ -157,14 +159,16 @@ function TimelineItem({ log, recent }: { log: PlayLog; recent: boolean }) {
         {log.photoPath && (
           <div className="mt-2.5 flex gap-1.5">
             {/* TODO(DB 연결): Storage 이미지 URL로 교체 */}
-            <span className="size-16 rounded-[10px] bg-illu-1" />
+            <span className="block size-16 overflow-hidden rounded-[10px]" role="img" aria-label="놀이 사진">
+              <Illustration height={64} seed={log.id.length} />
+            </span>
           </div>
         )}
         <div className="mt-3 flex gap-1.5">
           <ReactionTag reaction={log.reaction} />
           <ReactionTag done={log.done} />
         </div>
-      </article>
+      </Link>
     </li>
   );
 }

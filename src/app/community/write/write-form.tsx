@@ -6,6 +6,7 @@ import { ImagePlus } from "lucide-react";
 import { BOARD_LABEL, type Board } from "@/types";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
+import { toast } from "@/components/Toast";
 import { PageHeader } from "@/components/PageHeader";
 import { currentChild, savePost, useLocalData } from "@/lib/local-store";
 import { getPlay } from "@/lib/recommend";
@@ -39,7 +40,9 @@ export default function WriteForm() {
       title: title.trim(),
       body: body.trim(),
       playId: play?.id ?? null,
+      unverified: false,
     });
+    toast("글을 올렸어요");
     router.push("/community");
   }
 

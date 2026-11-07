@@ -1,9 +1,9 @@
 "use client";
 // 임시 저장소 (브라우저 localStorage). DB 연결 전까지 화면 흐름을 이어 주는 용도.
 // DB 연결 시 이 파일의 함수만 Supabase 호출로 바꾸면 됩니다. 필드는 supabase/schema.sql 기준.
+// schema.sql에 아직 없는 것(센터 대기, 저장한 놀이, 준비물 체크, 진행 위치, 설문 임시 저장, 알림)은 통합 담당과 논의 필요.
 import { useSyncExternalStore } from "react";
-import type { Board, PlayLog, SurveyAnswers, SurveyResult } from "@/types";
-import { scoreSurvey } from "./survey";
+import type { AgeGroup, Area, Board, Frequency, Level, PlayLog, SurveyAnswers, SurveyResult, TempItem } from "@/types";
 
 export type Child = {
   id: string;
@@ -29,7 +29,6 @@ export type Recommendation = {
   createdAt: string;
 };
 
-// 센터 대기 정보 (schema.sql에 아직 없음 → 통합 담당과 논의 필요)
 export type CenterWait = {
   name: string;
   waitStart: string; // 대기 시작일 YYYY-MM-DD
@@ -44,10 +43,24 @@ export type Post = {
   body: string;
   playId: string | null;
   comments: number;
+  unverified: boolean; // '검증되지 않은 정보' 표시
   createdAt: string;
 };
 
-type Data = {
+export type Comment = { id: string; postId: string; nickname: string; body: string; createdAt: string };
+
+/** 설문 중간 저장 (다시 열면 이어서) */
+export type SurveyDraft = {
+  childId: string;
+  group: AgeGroup;
+  dev: Partial<Record<Area, Level>>;
+  temp: Partial<Record<TempItem, Frequency>>;
+  index: number;
+};
+
+export type Settings = { notify: boolean; notifyTime: string };
+
+export type Data = {
   currentChildId: string | null;
   children: Child[];
   surveys: Survey[];
@@ -55,10 +68,16 @@ type Data = {
   playLogs: PlayLog[];
   center: CenterWait | null;
   posts: Post[];
+  comments: Comment[];
+  savedPlays: string[];
+  checklist: Record<string, number[]>; // playId → 체크한 준비물 index
+  progress: Record<string, number>; // playId → 진행 모드 단계
+  surveyDraft: SurveyDraft | null;
+  settings: Settings;
 };
 
 const KEY = "noridari:v2"; // v2: 설문 형식 변경(영아·유아 9문항). 이전 임시 데이터는 무시
-const EMPTY: Data = {
+export const EMPTY: Data = {
   currentChildId: null,
   children: [],
   surveys: [],
@@ -66,6 +85,12 @@ const EMPTY: Data = {
   playLogs: [],
   center: null,
   posts: [],
+  comments: [],
+  savedPlays: [],
+  checklist: {},
+  progress: {},
+  surveyDraft: null,
+  settings: { notify: false, notifyTime: "19:30" },
 };
 const listeners = new Set<() => void>();
 let cacheRaw: string | null | undefined;
@@ -96,101 +121,106 @@ function write(update: (d: Data) => Data) {
 }
 
 const now = () => new Date().toISOString();
-const uid = () => crypto.randomUUID();
+export const uid = () => crypto.randomUUID();
 
+// ── 아이 ──
 export function saveChild(c: Pick<Child, "nickname" | "birthDate">): Child {
   const row: Child = { ...c, id: uid(), consentAt: now(), createdAt: now() };
   write((d) => ({ ...d, currentChildId: row.id, children: [...d.children, row] }));
   return row;
 }
-
-export function saveSurvey(s: Omit<Survey, "id" | "createdAt">): Survey {
-  const row: Survey = { ...s, id: uid(), createdAt: now() };
-  write((d) => ({ ...d, surveys: [...d.surveys, row] }));
-  return row;
+export function switchChild(id: string) {
+  write((d) => ({ ...d, currentChildId: id }));
 }
 
+// ── 설문 ──
+export function saveSurvey(s: Omit<Survey, "id" | "createdAt">): Survey {
+  const row: Survey = { ...s, id: uid(), createdAt: now() };
+  write((d) => ({ ...d, surveys: [...d.surveys, row], surveyDraft: null }));
+  return row;
+}
+export function saveSurveyDraft(draft: SurveyDraft | null) {
+  write((d) => ({ ...d, surveyDraft: draft }));
+}
+
+// ── 추천·놀이 ──
 export function saveRecommendation(r: Omit<Recommendation, "id" | "createdAt">): Recommendation {
   const row: Recommendation = { ...r, id: uid(), createdAt: now() };
   write((d) => ({ ...d, recommendations: [...d.recommendations, row] }));
   return row;
 }
+export function toggleSaved(playId: string) {
+  write((d) => ({
+    ...d,
+    savedPlays: d.savedPlays.includes(playId) ? d.savedPlays.filter((p) => p !== playId) : [playId, ...d.savedPlays],
+  }));
+}
+export function toggleChecklist(playId: string, index: number) {
+  write((d) => {
+    const cur = d.checklist[playId] ?? [];
+    const next = cur.includes(index) ? cur.filter((i) => i !== index) : [...cur, index];
+    return { ...d, checklist: { ...d.checklist, [playId]: next } };
+  });
+}
+export function saveProgress(playId: string, step: number | null) {
+  write((d) => {
+    const progress = { ...d.progress };
+    if (step === null) delete progress[playId];
+    else progress[playId] = step;
+    return { ...d, progress };
+  });
+}
 
+// ── 기록 ──
 export function savePlayLog(l: Omit<PlayLog, "id" | "createdAt">): PlayLog {
   const row: PlayLog = { ...l, id: uid(), createdAt: now() };
   write((d) => ({ ...d, playLogs: [...d.playLogs, row] }));
   return row;
 }
+export function updatePlayLog(id: string, patch: Partial<Pick<PlayLog, "done" | "reaction" | "memo" | "photoPath">>) {
+  write((d) => ({ ...d, playLogs: d.playLogs.map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+}
+export function deletePlayLog(id: string) {
+  write((d) => ({ ...d, playLogs: d.playLogs.filter((l) => l.id !== id) }));
+}
+export function deleteAllPhotos() {
+  write((d) => ({ ...d, playLogs: d.playLogs.map((l) => ({ ...l, photoPath: null })) }));
+}
+export function deleteAllLogs() {
+  write((d) => ({ ...d, playLogs: [], recommendations: [] }));
+}
 
+// ── 센터·설정 ──
 export function saveCenter(c: CenterWait | null) {
   write((d) => ({ ...d, center: c }));
 }
+export function saveSettings(s: Settings) {
+  write((d) => ({ ...d, settings: s }));
+}
 
+// ── 커뮤니티 ──
 export function savePost(p: Omit<Post, "id" | "createdAt" | "comments">): Post {
   const row: Post = { ...p, id: uid(), comments: 0, createdAt: now() };
   write((d) => ({ ...d, posts: [row, ...d.posts] }));
   return row;
 }
+export function saveComment(c: Omit<Comment, "id" | "createdAt">): Comment {
+  const row: Comment = { ...c, id: uid(), createdAt: now() };
+  write((d) => ({ ...d, comments: [...d.comments, row] }));
+  return row;
+}
 
+/** 동의 철회 = 이 기기의 아이 정보와 기록 전부 삭제 */
 export function clearAll() {
   write(() => EMPTY);
 }
 
-/** 시연용 가짜 데이터 (실제 아이 정보 금지 규칙에 따라 전부 가짜) */
-export function seedDemo() {
-  const at = (daysAgo: number, hour: number) => {
-    const t = new Date();
-    t.setDate(t.getDate() - daysAgo);
-    t.setHours(hour, 0, 0, 0);
-    return t.toISOString();
-  };
-  const day = (offset: number) => at(-offset, 12).slice(0, 10);
-  const childId = uid();
-  const birth = new Date();
-  birth.setMonth(birth.getMonth() - 18);
-  const log = (playId: string, done: PlayLog["done"], reaction: PlayLog["reaction"], memo: string | null, daysAgo: number, hour: number): PlayLog => ({
-    id: uid(),
-    childId,
-    playId,
-    done,
-    reaction,
-    memo,
-    photoPath: null,
-    createdAt: at(daysAgo, hour),
-  });
-  const demoAnswers: SurveyAnswers = {
-    group: "infant",
-    dev: { lang: 1, cog: 2, soc: 2, gross: 3, fine: 1 },
-    temp: { explore: "sometimes", cautious: "often", initiative: "rarely", recovery: "sometimes" },
-  };
-  write(() => ({
-    ...EMPTY,
-    currentChildId: childId,
-    children: [{ id: childId, nickname: "하린", birthDate: birth.toISOString().slice(0, 10), consentAt: at(30, 9), createdAt: at(30, 9) }],
-    surveys: [
-      {
-        id: uid(),
-        childId,
-        answers: demoAnswers,
-        result: scoreSurvey(demoAnswers),
-        createdAt: at(29, 10),
-      },
-    ],
-    recommendations: [{ id: uid(), childId, playId: "lang-sound-2", reason: "즐거워해서 한 단계 발전된 놀이를 골랐어요", createdAt: at(0, 8) }],
-    playLogs: [
-      log("lang-sound-1", "done", "enjoyed", "뚜껑 소리에 깔깔 웃으면서 '땡!'을 따라 했어요.", 1, 19),
-      log("fine-clip-1", "partial", "hard", "집게 여는 걸 힘들어해서 두 개만 꽂았어요.", 2, 16),
-      log("lang-sound-1", "done", "neutral", null, 3, 11),
-      log("fine-clip-1", "done", "enjoyed", "왕관을 머리에 쓰고 거울을 한참 봤어요.", 5, 15),
-      log("lang-sound-1", "partial", "neutral", "처음엔 숟가락만 만지작거렸어요.", 8, 10),
-      log("fine-clip-1", "notDone", "hard", "졸려 해서 다음에 하기로 했어요.", 10, 20),
-    ],
-    center: { name: "새싹발달센터", waitStart: day(-60), consultDate: day(23) },
-    posts: [],
-  }));
+/** 시연 데이터 등 전체 교체 */
+export function replaceAll(data: Data) {
+  write(() => data);
 }
 
-/** 클라이언트에서만 값이 생김. 서버 렌더·하이드레이션 중엔 null. */
+/** 클라이언트에서만 값이 생김. 서버 렌더·하이드레이션 중엔 null(→ Skeleton). */
 export function useLocalData(): Data | null {
   return useSyncExternalStore(
     (cb) => {
@@ -213,15 +243,12 @@ const latest = <T extends { createdAt: string }>(rows: T[]) =>
 export function currentChild(d: Data): Child | null {
   return d.children.find((c) => c.id === d.currentChildId) ?? null;
 }
-
 export function latestSurvey(d: Data, childId: string): Survey | null {
   return latest(d.surveys.filter((s) => s.childId === childId));
 }
-
 export function latestRecommendation(d: Data, childId: string): Recommendation | null {
   return latest(d.recommendations.filter((r) => r.childId === childId));
 }
-
 export function childLogs(d: Data, childId: string): PlayLog[] {
   return d.playLogs.filter((l) => l.childId === childId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

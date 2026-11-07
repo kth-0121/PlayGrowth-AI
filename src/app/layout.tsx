@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Gowun_Batang } from "next/font/google";
 import { Suspense } from "react";
+import { OfflineBanner } from "@/components/StatusViews";
 import TabBar from "@/components/TabBar";
+import { Toaster } from "@/components/Toast";
 import "./globals.css";
 
 // 포인트 폰트: 놀이 상세 제목에만 사용 (font-display 클래스)
@@ -35,10 +37,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh">
         {/* 데스크톱에서는 480px 앱 화면처럼 가운데 정렬 */}
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-bg">
+          <OfflineBanner />
           {children}
           <Suspense fallback={null}>
             <TabBar />
           </Suspense>
+          <Toaster />
         </div>
       </body>
     </html>

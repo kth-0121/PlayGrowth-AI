@@ -18,6 +18,7 @@
   --color-memo: #3c4541; /* 기록 카드의 부모 메모 */
   --color-outer: #e7e9e7; /* 데스크톱에서 앱 바깥 배경 */
   --color-tabbar: rgb(255 255 255 / 0.96);
+  --color-scrim: rgb(22 32 28 / 0.4); /* 바텀시트 뒤 배경 (ink 40%) */
 
   /* 포인트 (sage 하나만) */
   --color-sage: #3f8f6e;
@@ -66,6 +67,32 @@ body {
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   word-break: keep-all;
+}
+
+/* 키보드 포커스: 2px sage 외곽선 */
+:focus-visible {
+  outline: 2px solid var(--color-sage);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 바텀시트·토스트 등장 (과하지 않게) */
+@keyframes sheet-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.anim-up {
+  animation: sheet-up 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-up { animation: none; }
+  .pressable:active { transform: none; }
+}
+
+/* 리포트 PDF 저장(인쇄)용 */
+@media print {
+  html, body { background: var(--color-card); }
+  .no-print { display: none !important; }
 }
 
 /* 누를 때만 살짝 작아짐 */

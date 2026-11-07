@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { Check } from "lucide-react";
 import { AREA_LABEL, type AgeGroup, type Area, type Frequency, type Level, type TempItem } from "@/types";
 import { Button, TextButton } from "@/components/Button";
@@ -9,35 +8,33 @@ import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { ProgressBar } from "@/components/ProgressBar";
+import { PageSkeleton } from "@/components/Skeleton";
+import { toast } from "@/components/Toast";
 import { ageInMonths } from "@/lib/age";
 import { callName } from "@/lib/copy";
-import { currentChild, saveSurvey, useLocalData } from "@/lib/local-store";
-import { FREQUENCY_LABEL, devQuestionsFor, groupFor, scoreSurvey, tempQuestionsFor } from "@/lib/survey";
+import { currentChild, saveSurvey, saveSurveyDraft, useLocalData, type SurveyDraft } from "@/lib/local-store";
+import { devQuestionsFor, groupFor, scoreSurvey, tempQuestionsFor } from "@/lib/survey";
 
-const FREQUENCIES: Frequency[] = ["often", "sometimes", "rarely"];
+// 3지선다. 발달 문항은 기획 데이터의 중간 단계(②) 행동을 질문으로 쓰고,
+// 답을 단계 값으로 바꿔 저장 (자주=2, 가끔=1, 아직=0) → SurveyAnswers 계약 그대로
+const DEV_ANSWERS: { label: string; value: Level }[] = [
+  { label: "자주 그렇다", value: 2 },
+  { label: "가끔 그렇다", value: 1 },
+  { label: "아직 아니다", value: 0 },
+];
+const TEMP_ANSWERS: { label: string; value: Frequency }[] = [
+  { label: "자주 그렇다", value: "often" },
+  { label: "가끔 그렇다", value: "sometimes" },
+  { label: "거의 아니다", value: "rarely" },
+];
 
-// 발달 문항 제목에 쓰는 쉬운 말
-const AREA_PHRASE: Record<Area, string> = {
-  lang: "말하기는",
-  cog: "놀잇감 다루기는",
-  soc: "다른 사람과 어울리기는",
-  gross: "몸 움직이기는",
-  fine: "손 쓰기는",
-};
-
-type Item =
-  | { kind: "dev"; key: Area; options: { value: Level; label: string }[] }
-  | { kind: "temp"; key: TempItem; text: string; options: { value: Frequency; label: string }[] };
+type Item = { kind: "dev"; key: Area; text: string } | { kind: "temp"; key: TempItem; text: string };
 
 export default function SurveyPage() {
   const router = useRouter();
   const data = useLocalData();
-  const [easier, setEasier] = useState(false); // 유아인데 영아용 문항으로 보기
-  const [dev, setDev] = useState<Partial<Record<Area, Level>>>({});
-  const [temp, setTemp] = useState<Partial<Record<TempItem, Frequency>>>({});
-  const [index, setIndex] = useState(0);
 
-  if (!data) return <main className="flex-1" />;
+  if (!data) return <PageSkeleton withTab={false} />;
   const child = currentChild(data);
   if (!child) {
     return (
@@ -50,56 +47,60 @@ export default function SurveyPage() {
 
   const name = callName(child.nickname);
   const baseGroup = groupFor(ageInMonths(child.birthDate));
-  const group: AgeGroup = baseGroup === "preschool" && easier ? "infant" : baseGroup;
+  const saved = data.surveyDraft?.childId === child.id ? data.surveyDraft : null;
+  const draft: SurveyDraft = saved ?? { childId: child.id, group: baseGroup, dev: {}, temp: {}, index: 0 };
+  const group: AgeGroup = draft.group;
 
-  // 발달 5문항(지금 모습에 가까운 단계) → 놀이 스타일 4문항
   const items: Item[] = [
-    ...devQuestionsFor(group).map((q): Item => ({
-      kind: "dev",
-      key: q.area,
-      options: [
-        ...q.levels.map((label, i) => ({ value: (i + 1) as Level, label })),
-        { value: 0 as Level, label: q.notYet },
-      ],
-    })),
-    ...tempQuestionsFor(group).map((q): Item => ({
-      kind: "temp",
-      key: q.item,
-      text: q.text,
-      options: FREQUENCIES.map((f) => ({ value: f, label: FREQUENCY_LABEL[f] })),
-    })),
+    ...devQuestionsFor(group).map((q): Item => ({ kind: "dev", key: q.area, text: q.levels[1] })),
+    ...tempQuestionsFor(group).map((q): Item => ({ kind: "temp", key: q.item, text: q.text })),
   ];
-
+  const index = Math.min(draft.index, items.length - 1);
   const item = items[index];
   const isLast = index === items.length - 1;
-  const selected = item.kind === "dev" ? dev[item.key] : temp[item.key];
+  const selected = item.kind === "dev" ? draft.dev[item.key] : draft.temp[item.key];
+  const options = item.kind === "dev" ? DEV_ANSWERS : TEMP_ANSWERS;
 
+  // 답할 때마다 자동 저장 → 나갔다 와도 이어서
   function choose(value: Level | Frequency) {
-    if (item.kind === "dev") setDev((p) => ({ ...p, [item.key]: value as Level }));
-    else setTemp((p) => ({ ...p, [item.key]: value as Frequency }));
+    if (item.kind === "dev") saveSurveyDraft({ ...draft, dev: { ...draft.dev, [item.key]: value as Level } });
+    else saveSurveyDraft({ ...draft, temp: { ...draft.temp, [item.key]: value as Frequency } });
+  }
+
+  function go(to: number) {
+    saveSurveyDraft({ ...draft, index: to });
   }
 
   function switchGroup() {
-    setEasier((v) => !v);
-    setDev({});
-    setTemp({});
-    setIndex(0);
+    saveSurveyDraft({ childId: draft.childId, group: group === "infant" ? baseGroup : "infant", dev: {}, temp: {}, index: 0 });
   }
 
   function next() {
     if (selected === undefined || !child) return;
-    if (!isLast) return setIndex(index + 1);
-    const answers = { group, dev: dev as Record<Area, Level>, temp: temp as Record<TempItem, Frequency> };
+    if (!isLast) return go(index + 1);
+    const answers = { group, dev: draft.dev as Record<Area, Level>, temp: draft.temp as Record<TempItem, Frequency> };
     saveSurvey({ childId: child.id, answers, result: scoreSurvey(answers) });
     router.push("/survey/result");
   }
 
+  function pause() {
+    toast("여기까지 저장했어요. 홈에서 이어서 할 수 있어요");
+    router.push("/");
+  }
+
   const caption = item.kind === "dev" ? AREA_LABEL[item.key] : "놀이 스타일";
-  const title = item.kind === "dev" ? `요즘 ${name}의\n${AREA_PHRASE[item.key]} 어느 쪽에 가까워요?` : item.text;
 
   return (
     <main className="flex flex-1 flex-col px-5 pb-[calc(56px+env(safe-area-inset-bottom))]">
-      <PageHeader back title={`${name} 평소 모습`} />
+      <PageHeader
+        back
+        title={`${name} 요즘 모습`}
+        right={
+          <TextButton onClick={pause} className="-mr-2">
+            나중에 이어서
+          </TextButton>
+        }
+      />
 
       <div className="mt-1">
         <ProgressBar value={(index + 1) / items.length} label="질문 진행률" />
@@ -108,22 +109,20 @@ export default function SurveyPage() {
         </p>
       </div>
 
-      <H1 className="mt-6 text-balance">{title}</H1>
-      {item.kind === "dev" && (
-        <p className="mt-1.5 text-[13.5px] font-medium text-sub">요즘 모습 그대로 골라 주세요. 정답은 없어요.</p>
-      )}
+      <p className="mt-6 text-[13px] font-semibold text-sub">{item.kind === "dev" ? `요즘 ${name}는` : `${name}는 평소에`}</p>
+      <H1 className="mt-1 text-balance">{item.text}</H1>
 
       <fieldset className="mt-6 flex flex-col gap-2.5">
-        <legend className="sr-only">{title}</legend>
-        {item.options.map((o) => {
+        <legend className="sr-only">{item.text}</legend>
+        {options.map((o) => {
           const on = selected === o.value;
           return (
             <button
-              key={String(o.value)}
+              key={o.label}
               type="button"
               aria-pressed={on}
               onClick={() => choose(o.value)}
-              className={`pressable flex min-h-14 items-center justify-between gap-3 rounded-[14px] px-[18px] py-3 text-left text-[16px] font-semibold leading-[1.4] ${
+              className={`pressable flex h-14 items-center justify-between gap-3 rounded-[14px] px-[18px] text-left text-[16px] font-semibold ${
                 on ? "border-[1.5px] border-sage bg-sage-xlight" : "border border-line bg-card"
               }`}
             >
@@ -136,7 +135,7 @@ export default function SurveyPage() {
 
       {index === 0 && baseGroup === "preschool" && (
         <TextButton onClick={switchGroup} className="mt-3 self-start">
-          {easier ? "원래 질문으로 돌아가기" : "질문이 어렵게 느껴지면 더 쉬운 질문으로 보기"}
+          {group === "infant" ? "원래 질문으로 돌아가기" : "질문이 어렵게 느껴지면 더 쉬운 질문으로 보기"}
         </TextButton>
       )}
 
@@ -144,7 +143,7 @@ export default function SurveyPage() {
         <Button full onClick={next} disabled={selected === undefined}>
           {isLast ? "결과 보기" : "다음 질문"}
         </Button>
-        <TextButton onClick={() => setIndex(index - 1)} disabled={index === 0}>
+        <TextButton onClick={() => go(index - 1)} disabled={index === 0}>
           이전 질문
         </TextButton>
       </div>
