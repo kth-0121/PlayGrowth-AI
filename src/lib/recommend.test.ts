@@ -13,7 +13,7 @@ const PLAYS = [
 ];
 let t = 0;
 const log = (playId: string, done: Done, reaction: Reaction): PlayLog => ({
-  id: String(t), childId: "k", playId, done, reaction, memo: null, photoPath: null,
+  id: String(t), childId: "k", playId, done, reaction, memo: null, photoPaths: [],
   createdAt: new Date(2026, 10, 1, 0, 0, t++).toISOString(),
 });
 const result: SurveyResult = {

@@ -8,6 +8,7 @@ import { H1, PageHeader } from "@/components/PageHeader";
 import { TAB_SAFE } from "@/components/TabBar";
 import { ageInMonths, formatMonths } from "@/lib/age";
 import { childLogs, clearAll, currentChild, saveCenter, seedDemo, useLocalData } from "@/lib/local-store";
+import { supabase } from "@/lib/supabase";
 
 const INPUT =
   "h-[52px] w-full rounded-[12px] border border-line bg-card px-4 text-[15px] font-medium outline-none placeholder:text-mute focus:border-sage focus:ring-[0.5px] focus:ring-sage";
@@ -126,9 +127,15 @@ export default function MyPage() {
         </ListRow>
       </ListGroup>
 
+      <ListGroup className="mt-7">
+        <ListRow onClick={() => supabase.auth.signOut()}>
+          <p className="text-[15px] font-semibold">로그아웃</p>
+        </ListRow>
+      </ListGroup>
+
       <p className="mt-8 text-[12px] font-medium leading-[1.6] text-sub">
         놀이다리는 의료 서비스가 아니며 발달지연이나 발달장애를 진단하지 않아요. 놀이 추천은 전문 평가와 치료를 대신하지
-        않아요. 지금 정보는 이 기기에만 저장돼요.
+        않아요. 정보는 로그인한 계정에만 저장되고, 언제든 지울 수 있어요.
       </p>
     </main>
   );

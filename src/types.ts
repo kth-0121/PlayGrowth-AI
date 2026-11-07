@@ -107,7 +107,7 @@ export type PlayLog = {
   done: Done;
   reaction: Reaction;
   memo: string | null;
-  photoPath: string | null; // 돌아보기용. AI가 사진으로 판단하지 않음
+  photoPaths: string[]; // Storage 경로 (최대 4장). 돌아보기용, AI가 사진으로 판단하지 않음
   createdAt: string;
 };
 

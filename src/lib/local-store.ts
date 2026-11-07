@@ -1,9 +1,10 @@
 "use client";
-// 임시 저장소 (브라우저 localStorage). DB 연결 전까지 화면 흐름을 이어 주는 용도.
-// DB 연결 시 이 파일의 함수만 Supabase 호출로 바꾸면 됩니다. 필드는 supabase/schema.sql 기준.
+// 저장소: 화면은 브라우저 캐시(localStorage)를 바로 읽고, 저장할 때마다 Supabase에도 함께 저장.
+// 로그인하면 syncFromServer()로 서버의 내 데이터를 캐시에 채움. 필드는 supabase/schema.sql 기준.
 import { useSyncExternalStore } from "react";
 import type { Board, PlayLog, SurveyAnswers, SurveyResult } from "@/types";
 import { scoreSurvey } from "./survey";
+import { supabase } from "./supabase";
 
 export type Child = {
   id: string;
@@ -29,7 +30,7 @@ export type Recommendation = {
   createdAt: string;
 };
 
-// 센터 대기 정보 (schema.sql에 아직 없음 → 통합 담당과 논의 필요)
+// 센터 대기 정보 (profiles의 center_name·wait_start·consult_date)
 export type CenterWait = {
   name: string;
   waitStart: string; // 대기 시작일 YYYY-MM-DD
@@ -95,45 +96,117 @@ function write(update: (d: Data) => Data) {
   listeners.forEach((l) => l());
 }
 
+// 캐시 행(camelCase) → DB 행(snake_case)
+const snake = (row: object) =>
+  Object.fromEntries(Object.entries(row).map(([k, v]) => [k.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase()), v]));
+const camel = <T,>(row: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(row).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), v])) as T;
+
+let userId: string | null = null; // AuthGate가 로그인 상태에 맞춰 설정
+
+// ponytail: 실패하면 콘솔에만 남기고 재시도 안 함. 오프라인 사용이 필요해지면 대기열 추가
+function push(table: string, row: object): PromiseLike<void> {
+  return supabase
+    .from(table)
+    .insert(snake(row))
+    .then(({ error }) => {
+      if (error) console.error(`[noridari] ${table} 저장 실패`, error.message);
+    });
+}
+
+/** 로그인 직후 서버의 내 데이터를 캐시로 가져옴 (RLS로 본인 것만 옴) */
+export async function syncFromServer(uid: string) {
+  userId = uid;
+  const get = async <T,>(table: string, select = "*") => {
+    const { data, error } = await supabase.from(table).select(select).order("created_at");
+    if (error) throw error;
+    return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => camel<T>(r));
+  };
+  const [children, surveys, recommendations, playLogs, rawPosts, profile] = await Promise.all([
+    get<Child & { parentId?: string }>("children"),
+    get<Survey>("surveys"),
+    get<Recommendation>("recommendations"),
+    get<PlayLog>("play_logs"),
+    get<{ id: string; board: Post["board"]; title: string; body: string; playId: string | null; createdAt: string; nickname: string; comments: { count: number }[] }>(
+      "posts",
+      "id, board, nickname, title, body, play_id, created_at, comments(count)",
+    ),
+    supabase.from("profiles").select("center_name, wait_start, consult_date").eq("id", uid).single(),
+  ]);
+  const kids = children.map(({ parentId: _, ...c }) => c); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const posts: Post[] = rawPosts
+    .map((p) => ({ id: p.id, board: p.board, title: p.title, body: p.body, playId: p.playId, createdAt: p.createdAt, nickname: p.nickname, comments: p.comments[0]?.count ?? 0 }))
+    .reverse(); // 최신 글 먼저
+  const pr = profile.data;
+  const center = pr?.center_name ? { name: pr.center_name, waitStart: pr.wait_start ?? "", consultDate: pr.consult_date ?? "" } : null;
+  write(() => ({ currentChildId: kids.at(-1)?.id ?? null, children: kids, surveys, recommendations, playLogs, posts, center }));
+}
+
+/** 로그아웃 시 이 기기의 캐시 비우기 */
+export function clearLocal() {
+  userId = null;
+  write(() => EMPTY);
+}
+
 const now = () => new Date().toISOString();
 const uid = () => crypto.randomUUID();
 
 export function saveChild(c: Pick<Child, "nickname" | "birthDate">): Child {
   const row: Child = { ...c, id: uid(), consentAt: now(), createdAt: now() };
   write((d) => ({ ...d, currentChildId: row.id, children: [...d.children, row] }));
+  if (userId) push("children", { ...row, parentId: userId });
   return row;
 }
 
 export function saveSurvey(s: Omit<Survey, "id" | "createdAt">): Survey {
   const row: Survey = { ...s, id: uid(), createdAt: now() };
   write((d) => ({ ...d, surveys: [...d.surveys, row] }));
+  push("surveys", row);
   return row;
 }
 
 export function saveRecommendation(r: Omit<Recommendation, "id" | "createdAt">): Recommendation {
   const row: Recommendation = { ...r, id: uid(), createdAt: now() };
   write((d) => ({ ...d, recommendations: [...d.recommendations, row] }));
+  push("recommendations", row);
   return row;
 }
 
 export function savePlayLog(l: Omit<PlayLog, "id" | "createdAt">): PlayLog {
   const row: PlayLog = { ...l, id: uid(), createdAt: now() };
   write((d) => ({ ...d, playLogs: [...d.playLogs, row] }));
+  push("play_logs", row);
   return row;
 }
 
 export function saveCenter(c: CenterWait | null) {
   write((d) => ({ ...d, center: c }));
+  if (userId)
+    supabase
+      .from("profiles")
+      .update({ center_name: c?.name ?? null, wait_start: c?.waitStart || null, consult_date: c?.consultDate || null })
+      .eq("id", userId)
+      .then(({ error }) => error && console.error("[noridari] 센터 정보 저장 실패", error.message));
 }
 
 export function savePost(p: Omit<Post, "id" | "createdAt" | "comments">): Post {
   const row: Post = { ...p, id: uid(), comments: 0, createdAt: now() };
   write((d) => ({ ...d, posts: [row, ...d.posts] }));
+  if (userId) push("posts", { id: row.id, authorId: userId, nickname: row.nickname, board: row.board, playId: row.playId, title: row.title, body: row.body });
   return row;
 }
 
-export function clearAll() {
-  write(() => EMPTY);
+/** 아이 정보·기록·사진 전부 삭제 (서버 포함). 커뮤니티 글은 남김 */
+export async function clearAll() {
+  write((d) => ({ ...EMPTY, posts: d.posts }));
+  if (!userId) return;
+  const uidNow = userId;
+  const { data: files } = await supabase.storage.from("photos").list(uidNow, { limit: 1000 });
+  if (files?.length) await supabase.storage.from("photos").remove(files.map((f) => `${uidNow}/${f.name}`));
+  // children을 지우면 설문·추천·기록·리포트도 함께 지워짐 (on delete cascade)
+  const { error } = await supabase.from("children").delete().eq("parent_id", uidNow);
+  if (error) console.error("[noridari] 삭제 실패", error.message);
+  saveCenter(null);
 }
 
 /** 시연용 가짜 데이터 (실제 아이 정보 금지 규칙에 따라 전부 가짜) */
@@ -155,7 +228,7 @@ export function seedDemo() {
     done,
     reaction,
     memo,
-    photoPath: null,
+    photoPaths: [],
     createdAt: at(daysAgo, hour),
   });
   const demoAnswers: SurveyAnswers = {
@@ -166,7 +239,7 @@ export function seedDemo() {
   write(() => ({
     ...EMPTY,
     currentChildId: childId,
-    children: [{ id: childId, nickname: "하린", birthDate: birth.toISOString().slice(0, 10), consentAt: at(30, 9), createdAt: at(30, 9) }],
+    children: [{ id: childId, nickname: "하린", birthDate: birth.toISOString().slice(0, 10), consentAt: at(30, 9), createdAt: now() }],
     surveys: [
       {
         id: uid(),
@@ -188,6 +261,16 @@ export function seedDemo() {
     center: { name: "새싹발달센터", waitStart: day(-60), consultDate: day(23) },
     posts: [],
   }));
+  // 로그인 상태면 서버에도 저장 (새로고침해도 유지). 아이 createdAt을 지금으로 둬서 현재 아이로 선택됨
+  if (!userId) return;
+  const d = read();
+  // 아이 행이 먼저 들어간 뒤에 나머지 저장 (외래 키)
+  push("children", { ...d.children[0], parentId: userId }).then(() => {
+    d.surveys.forEach((r) => push("surveys", r));
+    d.recommendations.forEach((r) => push("recommendations", r));
+    d.playLogs.forEach((r) => push("play_logs", r));
+  });
+  saveCenter(d.center);
 }
 
 /** 클라이언트에서만 값이 생김. 서버 렌더·하이드레이션 중엔 null. */

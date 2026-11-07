@@ -3,6 +3,7 @@ import { Gowun_Batang } from "next/font/google";
 import { Suspense } from "react";
 import TabBar from "@/components/TabBar";
 import "./globals.css";
+import AuthGate from "@/components/auth-gate";
 
 // 포인트 폰트: 놀이 상세 제목에만 사용 (font-display 클래스)
 const gowunBatang = Gowun_Batang({
@@ -35,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh">
         {/* 데스크톱에서는 480px 앱 화면처럼 가운데 정렬 */}
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-bg">
-          {children}
+          <AuthGate>{children}</AuthGate>
           <Suspense fallback={null}>
             <TabBar />
           </Suspense>

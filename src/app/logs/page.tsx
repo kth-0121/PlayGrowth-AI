@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TAB_FAB_SAFE, TAB_SAFE } from "@/components/TabBar";
 import { callName } from "@/lib/copy";
 import { logTimeLabel, thisWeek, WEEKDAY, ymd } from "@/lib/dates";
+import { StoragePhoto } from "@/components/StoragePhoto";
 import { childLogs, currentChild, latestRecommendation, useLocalData } from "@/lib/local-store";
 import { getPlay } from "@/lib/recommend";
 
@@ -154,10 +155,11 @@ function TimelineItem({ log, recent }: { log: PlayLog; recent: boolean }) {
           {play && <AreaChip area={play.area} />}
         </div>
         {log.memo && <p className="mt-2 text-[13.5px] font-medium leading-[1.55] text-memo">“{log.memo}”</p>}
-        {log.photoPath && (
+        {log.photoPaths.length > 0 && (
           <div className="mt-2.5 flex gap-1.5">
-            {/* TODO(DB 연결): Storage 이미지 URL로 교체 */}
-            <span className="size-16 rounded-[10px] bg-illu-1" />
+            {log.photoPaths.map((path) => (
+              <StoragePhoto key={path} path={path} />
+            ))}
           </div>
         )}
         <div className="mt-3 flex gap-1.5">

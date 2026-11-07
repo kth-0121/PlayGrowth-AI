@@ -13,6 +13,7 @@ import { callName } from "@/lib/copy";
 import { ageInMonths } from "@/lib/age";
 import { childLogs, currentChild, latestSurvey, savePlayLog, saveRecommendation, useLocalData } from "@/lib/local-store";
 import { nextRecommendation } from "@/lib/recommend";
+import { uploadPhoto } from "@/lib/supabase";
 
 const DONE: Done[] = ["done", "partial", "notDone"];
 const REACTIONS: Reaction[] = ["enjoyed", "neutral", "hard"];
@@ -23,7 +24,8 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
   const [done, setDone] = useState<Done | null>(null);
   const [reaction, setReaction] = useState<Reaction | null>(null);
   const [memo, setMemo] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<{ url: string; file: File }[]>([]);
+  const [busy, setBusy] = useState(false);
 
   if (!data) return <main className="flex-1" />;
   const child = currentChild(data);
@@ -38,18 +40,22 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
 
   function addPhotos(files: FileList | null) {
     if (!files) return;
-    setPhotos((prev) => [...prev, ...Array.from(files).map((f) => URL.createObjectURL(f))].slice(0, 4));
+    setPhotos((prev) => [...prev, ...Array.from(files).map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, 4));
   }
   function removePhoto(url: string) {
     URL.revokeObjectURL(url);
-    setPhotos((prev) => prev.filter((p) => p !== url));
+    setPhotos((prev) => prev.filter((p) => p.url !== url));
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!child || !done || !reaction) return;
-    // TODO(DB 연결): 사진을 Storage에 올리고 photoPath 저장
-    const log = savePlayLog({ childId: child.id, playId, done, reaction, memo: memo.trim() || null, photoPath: null });
+    if (!child || !done || !reaction || busy) return;
+    setBusy(true);
+    // 사진은 내 폴더에 올림. 실패한 사진은 빼고 기록은 저장
+    const uploaded = await Promise.allSettled(photos.map((p) => uploadPhoto(p.file)));
+    const photoPaths = uploaded.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    if (photoPaths.length < photos.length) console.error("[noridari] 사진 일부 업로드 실패", uploaded);
+    const log = savePlayLog({ childId: child.id, playId, done, reaction, memo: memo.trim() || null, photoPaths });
     // 방금 기록까지 반영해 다음 놀이 추천 → 기록 목록 상단과 홈 '오늘의 놀이'에 보임
     const logs = [...childLogs(data!, child.id), log];
     const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs);
@@ -84,7 +90,7 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
       <div className="mt-7 flex flex-col gap-2">
         <span className="text-[13px] font-semibold text-sub">사진</span>
         <div className="flex flex-wrap gap-1.5">
-          {photos.map((url) => (
+          {photos.map(({ url }) => (
             <div key={url} className="relative size-16">
               {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 blob 미리보기 */}
               <img src={url} alt="추가한 사진" className="size-16 rounded-[10px] object-cover" />
@@ -110,8 +116,8 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
       </div>
 
       <div className="mt-auto pt-8">
-        <Button type="submit" full disabled={!done || !reaction}>
-          기록 저장
+        <Button type="submit" full disabled={!done || !reaction || busy}>
+          {busy ? "저장하는 중…" : "기록 저장"}
         </Button>
       </div>
     </form>
