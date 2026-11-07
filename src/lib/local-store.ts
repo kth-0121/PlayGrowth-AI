@@ -46,16 +46,7 @@ export type Post = {
   playId: string | null;
   comments: number;
   createdAt: string;
-};
-
-// 댓글 (comments 테이블). DB에 닉네임 칸이 없어서 남의 댓글은 '익명', 내 댓글은 쓸 때의 닉네임으로 보여줌
-export type Comment = {
-  id: string;
-  postId: string;
-  nickname: string;
-  body: string;
-  mine: boolean;
-  createdAt: string;
+  authorId?: string; // 내 글이면 삭제 버튼 표시. 예시 글은 없음
 };
 
 type Data = {
@@ -66,7 +57,6 @@ type Data = {
   playLogs: PlayLog[];
   center: CenterWait | null;
   posts: Post[];
-  comments: Comment[]; // 글 상세를 열 때 그 글의 댓글을 불러와 채움
 };
 
 const KEY = "noridari:v2"; // v2: 설문 형식 변경(영아·유아 9문항). 이전 임시 데이터는 무시
@@ -78,7 +68,6 @@ const EMPTY: Data = {
   playLogs: [],
   center: null,
   posts: [],
-  comments: [],
 };
 const listeners = new Set<() => void>();
 let cacheRaw: string | null | undefined;
@@ -115,6 +104,7 @@ const camel = <T,>(row: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(row).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), v])) as T;
 
 let userId: string | null = null; // AuthGate가 로그인 상태에 맞춰 설정
+let admin = false; // 운영자 여부 (profiles.is_admin, 대시보드에서만 지정)
 
 // ponytail: 실패하면 콘솔에만 남기고 재시도 안 함. 오프라인 사용이 필요해지면 대기열 추가
 function push(table: string, row: object): PromiseLike<void> {
@@ -139,24 +129,26 @@ export async function syncFromServer(uid: string) {
     get<Survey>("surveys"),
     get<Recommendation>("recommendations"),
     get<PlayLog>("play_logs"),
-    get<{ id: string; board: Post["board"]; title: string; body: string; playId: string | null; createdAt: string; nickname: string; comments: { count: number }[] }>(
+    get<{ id: string; authorId: string; board: Post["board"]; title: string; body: string; playId: string | null; createdAt: string; nickname: string; comments: { count: number }[] }>(
       "posts",
-      "id, board, nickname, title, body, play_id, created_at, comments(count)",
+      "id, author_id, board, nickname, title, body, play_id, created_at, comments(count)",
     ),
-    supabase.from("profiles").select("center_name, wait_start, consult_date").eq("id", uid).single(),
+    supabase.from("profiles").select("center_name, wait_start, consult_date, is_admin").eq("id", uid).single(),
   ]);
   const kids = children.map(({ parentId: _, ...c }) => c); // eslint-disable-line @typescript-eslint/no-unused-vars
   const posts: Post[] = rawPosts
-    .map((p) => ({ id: p.id, board: p.board, title: p.title, body: p.body, playId: p.playId, createdAt: p.createdAt, nickname: p.nickname, comments: p.comments[0]?.count ?? 0 }))
+    .map((p) => ({ id: p.id, authorId: p.authorId, board: p.board, title: p.title, body: p.body, playId: p.playId, createdAt: p.createdAt, nickname: p.nickname, comments: p.comments[0]?.count ?? 0 }))
     .reverse(); // 최신 글 먼저
   const pr = profile.data;
+  admin = !!pr?.is_admin;
   const center = pr?.center_name ? { name: pr.center_name, waitStart: pr.wait_start ?? "", consultDate: pr.consult_date ?? "" } : null;
-  write(() => ({ currentChildId: kids.at(-1)?.id ?? null, children: kids, surveys, recommendations, playLogs, posts, center, comments: [] }));
+  write(() => ({ currentChildId: kids.at(-1)?.id ?? null, children: kids, surveys, recommendations, playLogs, posts, center }));
 }
 
 /** 로그아웃 시 이 기기의 캐시 비우기 */
 export function clearLocal() {
   userId = null;
+  admin = false;
   write(() => EMPTY);
 }
 
@@ -202,66 +194,32 @@ export function saveCenter(c: CenterWait | null) {
 }
 
 export function savePost(p: Omit<Post, "id" | "createdAt" | "comments">): Post {
-  const row: Post = { ...p, id: uid(), comments: 0, createdAt: now() };
+  const row: Post = { ...p, id: uid(), comments: 0, createdAt: now(), authorId: userId ?? undefined };
   write((d) => ({ ...d, posts: [row, ...d.posts] }));
   if (userId) push("posts", { id: row.id, authorId: userId, nickname: row.nickname, board: row.board, playId: row.playId, title: row.title, body: row.body });
   return row;
 }
 
-/** 글 상세를 열 때 그 글의 댓글을 서버에서 불러와 캐시에 넣음 (로그인 안 했으면 캐시만 씀) */
-export async function loadComments(postId: string) {
-  if (!userId) return;
-  const me = userId;
-  const { data, error } = await supabase
-    .from("comments")
-    .select("id, post_id, author_id, body, created_at")
-    .eq("post_id", postId)
-    .order("created_at");
-  if (error) return console.error("[noridari] 댓글 불러오기 실패", error.message);
-  const rows = (data ?? []) as { id: string; post_id: string; author_id: string; body: string; created_at: string }[];
-  write((d) => {
-    const mineLocal = new Map(d.comments.filter((c) => c.mine).map((c) => [c.id, c.nickname]));
-    const server: Comment[] = rows.map((r) => ({
-      id: r.id,
-      postId: r.post_id,
-      nickname: r.author_id === me ? (mineLocal.get(r.id) ?? "나") : "익명",
-      body: r.body,
-      mine: r.author_id === me,
-      createdAt: r.created_at,
-    }));
-    const ids = new Set(server.map((c) => c.id));
-    // 방금 쓴 댓글이 아직 서버에 없으면 남겨 둠
-    const pending = d.comments.filter((c) => c.postId === postId && c.mine && !ids.has(c.id));
-    return { ...d, comments: [...d.comments.filter((c) => c.postId !== postId), ...server, ...pending] };
-  });
+/** 지금 로그인한 보호자 id (내 글 구분용) */
+export const myUserId = () => userId;
+/** 운영자면 모든 글·댓글을 지울 수 있음 (서버 RLS도 is_admin으로 허용) */
+export const isAdmin = () => admin;
+/** 이 글·댓글을 지울 수 있는지: 내가 쓴 것이거나 운영자 */
+export const canDelete = (authorId?: string) => !!userId && (admin || authorId === userId);
+
+/** 내 글 삭제 (운영자는 모든 글). 권한은 서버 RLS가 판단 */
+export function deletePost(id: string) {
+  write((d) => ({ ...d, posts: d.posts.filter((p) => p.id !== id) }));
+  supabase
+    .from("posts")
+    .delete()
+    .eq("id", id)
+    .then(({ error }) => error && console.error("[noridari] 글 삭제 실패", error.message));
 }
 
-/** localOnly: 시연용 가짜 글처럼 서버에 없는 글이면 이 기기에만 저장 */
-export function saveComment(c: Pick<Comment, "postId" | "nickname" | "body">, localOnly = false): Comment {
-  const row: Comment = { ...c, id: uid(), mine: true, createdAt: now() };
-  write((d) => ({
-    ...d,
-    comments: [...d.comments, row],
-    posts: d.posts.map((p) => (p.id === c.postId ? { ...p, comments: p.comments + 1 } : p)),
-  }));
-  if (userId && !localOnly) push("comments", { id: row.id, postId: row.postId, authorId: userId, body: row.body });
-  return row;
-}
-
-export function deleteComment(id: string) {
-  const target = read().comments.find((c) => c.id === id);
-  if (!target?.mine) return;
-  write((d) => ({
-    ...d,
-    comments: d.comments.filter((c) => c.id !== id),
-    posts: d.posts.map((p) => (p.id === target.postId ? { ...p, comments: Math.max(0, p.comments - 1) } : p)),
-  }));
-  if (userId)
-    supabase
-      .from("comments")
-      .delete()
-      .eq("id", id)
-      .then(({ error }) => error && console.error("[noridari] 댓글 삭제 실패", error.message));
+/** 댓글 수 갱신 (댓글을 쓰거나 지웠을 때, comments.ts에서 호출) */
+export function bumpComments(postId: string, delta: number) {
+  write((d) => ({ ...d, posts: d.posts.map((p) => (p.id === postId ? { ...p, comments: Math.max(0, p.comments + delta) } : p)) }));
 }
 
 /** 아이 정보·기록·사진 전부 삭제 (서버 포함). 커뮤니티 글은 남김 */
