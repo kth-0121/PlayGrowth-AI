@@ -18,7 +18,7 @@ export const SYSTEM = `너는 '놀이다리'의 기록 정리 도우미야.
 - 부모를 탓하거나 평가하지 않는다. 쉬운 말로 쓴다.
 형식: {"interests": "아이가 흥미를 보인 점 1~2문장", "difficulties": "아이가 어려워한 점 1~2문장", "summary": "기간 동안의 놀이 모습 요약 3문장"}`;
 
-const BANNED = /진단|지연|향상|좋아졌|발달|점차|늘어|효과|적응|관심이 없|보여주|변화|성장|능력|수준/;
+const BANNED = /진단|지연|향상|좋아졌|발달|점차|늘어|효과|적응|관심이 없|보여줍니다|보여 줍니다|변화|성장|능력|수준/;
 
 const mmdd = (iso: string) => iso.slice(5, 10);
 const title = (l: PlayLog) => getPlay(l.playId)?.title ?? l.playId;
