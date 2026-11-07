@@ -1,48 +1,81 @@
 @import "tailwindcss";
 
-/* 따뜻하고 부드러운 색감 */
-:root {
-  --background: #fdf9f3;
-  --foreground: #3a2f28;
-  --card: #ffffff;
-  --line: #efe4d6;
-  --muted: #8a7a6d;
-  --brand: #e07a4f;
-  --brand-soft: #fcebe1;
-  --calm: #6aa58a;
-  --calm-soft: #e5f2ec;
+/* ───────────────────────────────────────────────
+   디자인 토큰 (유일한 색상 정의 위치)
+   이 파일 밖에서는 hex/rgb를 쓰지 않고 아래 토큰 클래스만 씁니다.
+   예: bg-bg, bg-card, text-ink, text-sub, border-line, bg-sage ...
+   ─────────────────────────────────────────────── */
+@theme {
+  /* 기본 */
+  --color-bg: #f3f5f4;
+  --color-paper: #fafaf7;
+  --color-card: #ffffff;
+  --color-ink: #16201c;
+  --color-sub: #66736e;
+  --color-mute: #9aa5a1;
+  --color-line: #e5ebe8;
+  --color-line-soft: #eef2f0; /* ListRow 행 구분선 */
+  --color-memo: #3c4541; /* 기록 카드의 부모 메모 */
+  --color-outer: #e7e9e7; /* 데스크톱에서 앱 바깥 배경 */
+  --color-tabbar: rgb(255 255 255 / 0.96);
+
+  /* 포인트 (sage 하나만) */
+  --color-sage: #3f8f6e;
+  --color-sage-dark: #2f7458;
+  --color-sage-light: #e8f2ed;
+  --color-sage-xlight: #f2f8f5;
+  --color-neutral-chip: #eef1f0;
+  --color-track: #edf1ef;
+  --color-warm: #f3ebdd;
+  --color-joy: #c9674b;
+  --color-joy-bg: #fdeee8;
+  --color-danger: #d9534f;
+
+  /* 일러스트 플레이스홀더 */
+  --color-illu-1: #cfe3d9;
+  --color-illu-2: #b8d6c7;
+  --color-illu-3: #f4e3cf;
+  --color-illu-4: #ebcfaf;
+  --color-illu-5: #8fbfa8;
+  /* 놀이 상세(sage 배경) 일러스트 */
+  --color-illu-s1: #5ba584;
+  --color-illu-s2: #77b699;
+  --color-illu-s3: #f0e4cf;
+  --color-illu-s4: #e2cfae;
+
+  /* 그림자: FAB에만 */
+  --shadow-fab: 0 8px 20px -8px rgb(47 116 88 / 0.6);
+
+  /* 폰트 */
+  --font-sans: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-display: var(--font-gowun-batang), serif; /* 놀이 상세 제목에만 */
+
+  /* 모션 */
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1c1916;
-    --foreground: #f1e9e0;
-    --card: #26221e;
-    --line: #3a332c;
-    --muted: #b3a597;
-    --brand: #f0956c;
-    --brand-soft: #3a2a21;
-    --calm: #8cc7aa;
-    --calm-soft: #23332b;
-  }
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-line: var(--line);
-  --color-muted: var(--muted);
-  --color-brand: var(--brand);
-  --color-brand-soft: var(--brand-soft);
-  --color-calm: var(--calm);
-  --color-calm-soft: var(--calm-soft);
-  --font-sans: var(--font-noto-kr), system-ui, sans-serif;
+html {
+  background: var(--color-outer);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-outer);
+  color: var(--color-ink);
   font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
   word-break: keep-all;
+}
+
+/* 누를 때만 살짝 작아짐 */
+.pressable {
+  transition:
+    transform 150ms ease-out,
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    color 180ms ease-out;
+}
+.pressable:active {
+  transform: scale(0.98);
 }

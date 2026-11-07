@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AREA_LABEL } from "@/types";
-import { Box, PrimaryLink } from "@/components/ui";
+import { Logo } from "@/components/Icon";
+import { AreaChip, MetaChip, TimeChip } from "@/components/Chip";
+import { Illustration } from "@/components/Illustration";
 import { getPlay, PLAYS } from "@/lib/recommend";
+import PlayCta from "./play-cta";
 import RecommendReason from "./recommend-reason";
 
 // 놀이는 data/plays.json에 고정 → 빌드할 때 카드 페이지를 미리 만들어 둠
@@ -10,80 +12,71 @@ export function generateStaticParams() {
   return PLAYS.map((p) => ({ id: p.id }));
 }
 
-const STEP_LABEL = { 1: "쉬운 단계", 2: "중간 단계", 3: "도전 단계" } as const;
-
-export default async function PlayCardPage({ params }: PageProps<"/play/[id]">) {
+export default async function PlayDetailPage({ params }: PageProps<"/play/[id]">) {
   const { id } = await params;
   const play = getPlay(id);
   if (!play) notFound();
+  const no = PLAYS.findIndex((p) => p.id === play.id) + 1;
 
   return (
-    <article className="flex flex-col gap-5">
-      <header className="flex flex-col gap-2">
-        <p className="text-xs font-medium text-brand">3 / 4 · 오늘의 놀이</p>
-        <h1 className="text-2xl font-bold">{play.title}</h1>
-        <div className="flex flex-wrap gap-2 text-xs">
-          <Tag strong>🎯 {AREA_LABEL[play.area]}</Tag>
-          <Tag>⏱ {play.minutes}분</Tag>
-          <Tag>{STEP_LABEL[play.step]}</Tag>
-        </div>
-        <RecommendReason playId={play.id} />
+    // 하단: 탭바 74 + CTA 52 + 여백
+    <main className="flex-1 bg-paper px-5 pb-[calc(170px+env(safe-area-inset-bottom))]">
+      <header className="flex h-14 items-center justify-between">
+        <Link href="/" aria-label="홈으로">
+          <Logo />
+        </Link>
+        <span className="text-[12px] font-semibold tracking-[0.04em] text-mute">TODAY · No.{no}</span>
       </header>
 
-      <Box title="준비물">
-        <ul className="flex flex-wrap gap-2">
-          {play.materials.map((m) => (
-            <li key={m} className="rounded-full bg-brand-soft px-3 py-1.5 text-sm">
-              {m}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs text-muted">집에 있는 다른 물건으로 바꿔도 괜찮아요.</p>
-      </Box>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <AreaChip area={play.area} />
+        <TimeChip minutes={play.minutes} />
+        <MetaChip>{play.months[0]}개월 이상</MetaChip>
+      </div>
 
-      <Box title="이렇게 해 봐요">
-        <ol className="flex flex-col gap-3">
+      <h1 className="mt-3.5 text-balance font-display text-[30px] font-bold leading-[1.35] tracking-[-0.04em]">
+        {play.title}
+      </h1>
+      <RecommendReason playId={play.id} />
+
+      <Illustration height={170} variant="sage" seed={no} className="-mx-5 mt-6" />
+
+      <section className="flex gap-3 border-b border-line py-[18px]">
+        <h2 className="w-[52px] shrink-0 text-[13.5px] font-semibold text-sub">준비물</h2>
+        <p className="text-[13.5px] font-medium leading-[1.55]">{play.materials.join(", ")}</p>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-[13px] font-semibold text-sub">이렇게 놀아요</h2>
+        <ol className="mt-1">
           {play.steps.map((s, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-calm text-sm font-bold text-white dark:text-black">
-                {i + 1}
+            <li key={i} className="flex gap-3 border-b border-line py-3 text-[14.5px] font-medium leading-[1.5]">
+              <span className="w-5 shrink-0 pt-px text-[13px] font-extrabold text-sage">
+                {String(i + 1).padStart(2, "0")}
               </span>
-              <span className="pt-0.5 text-sm leading-relaxed">{s}</span>
+              <span>{s}</span>
             </li>
           ))}
         </ol>
-      </Box>
+      </section>
 
-      <Box title="아이가 어려워하면">
-        <ul className="flex flex-col gap-2">
-          {play.tips.map((t) => (
-            <li key={t} className="rounded-xl bg-calm-soft px-4 py-2.5 text-sm leading-relaxed">
-              💡 {t}
-            </li>
-          ))}
-        </ul>
-      </Box>
+      <section className="mt-3.5 flex flex-col gap-2.5">
+        <h2 className="sr-only">아이가 어려워하면</h2>
+        {play.tips.map((t) => (
+          <p key={t} className="border-l-[3px] border-warm pl-3 text-[13px] font-medium leading-[1.55] text-sub">
+            {t}
+          </p>
+        ))}
+      </section>
 
-      <p className="text-center text-xs text-muted">치료나 훈련이 아니에요. 아이와 함께 즐기는 게 가장 중요해요.</p>
-
-      <div className="flex flex-col gap-3">
-        <PrimaryLink href={`/play/${play.id}/log`}>놀이 해 보고 기록하기</PrimaryLink>
-        {/* 커뮤니티 글쓰기(기록·리포트·커뮤니티 담당)로 연결. 경로는 해당 화면과 맞출 것 */}
-        <Link
-          href={`/community/write?board=review&playId=${play.id}`}
-          className="flex h-12 items-center justify-center rounded-full border border-line bg-card font-bold"
-        >
-          ✏️ 후기 쓰기
+      <p className="mt-8 text-[13px] font-medium text-sub">
+        해 본 적 있나요?{" "}
+        <Link href={`/community/write?board=review&playId=${play.id}`} className="font-semibold text-ink underline underline-offset-4">
+          다른 부모에게 후기 남기기
         </Link>
-      </div>
-    </article>
-  );
-}
+      </p>
 
-function Tag({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
-  return (
-    <span className={`rounded-full px-3 py-1 ${strong ? "bg-brand text-white dark:text-black" : "bg-card ring-1 ring-line"}`}>
-      {children}
-    </span>
+      <PlayCta playId={play.id} />
+    </main>
   );
 }

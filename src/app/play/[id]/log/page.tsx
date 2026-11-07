@@ -10,5 +10,5 @@ export default async function PlayLogPage({ params }: PageProps<"/play/[id]/log"
   const { id } = await params;
   const play = getPlay(id);
   if (!play) notFound();
-  return <LogForm playId={play.id} playTitle={play.title} />;
+  return <LogForm playId={play.id} playTitle={play.title} area={play.area} />;
 }
