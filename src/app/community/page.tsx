@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BOARD_LABEL, type Board } from "@/types";
 import { Fab } from "@/components/Button";
 import { ListGroup, ListRow } from "@/components/ListRow";
-import { H1, PageHeader } from "@/components/PageHeader";
+import { H1 } from "@/components/PageHeader";
 import { PageSkeleton } from "@/components/Skeleton";
 import { NoResult } from "@/components/StatusViews";
 import { TAB_FAB_SAFE } from "@/components/TabBar";
@@ -30,7 +30,7 @@ export default function CommunityPage() {
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_FAB_SAFE}`}>
-      <PageHeader logo />
+      <div className="h-8" aria-hidden />
       <H1 className="mt-2">이야기</H1>
       <p className="mt-1 text-[13.5px] font-medium text-sub">같은 시간을 보내는 부모들의 {BOARD_LABEL[board]}</p>
 

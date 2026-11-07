@@ -1,8 +1,7 @@
 "use client";
 
 import { ButtonLink, TextButton } from "./Button";
-import { Logo } from "./Icon";
-import { Illustration } from "./Illustration";
+import { PlayArt } from "./PlayArt";
 import { ListGroup, ListRow } from "./ListRow";
 import { H1 } from "./PageHeader";
 import { seedDemo } from "@/mocks/demo";
@@ -18,18 +17,14 @@ const NEXT_STEPS = [
 export function Landing() {
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
-      <header className="flex h-14 items-center">
-        <Logo />
-      </header>
-
-      <H1 className="mt-4">{"센터를 기다리는 동안,\n집에서 하루 15분 놀이해요"}</H1>
+      <H1 className="mt-12">{"센터를 기다리는 동안,\n집에서 하루 15분 놀이해요"}</H1>
       <p className="mt-2 text-[14px] font-medium leading-[1.5] text-sub">
         아이의 요즘 모습에 맞는 놀이를 고르고, 해 본 기록을 상담까지 이어 드려요.
       </p>
 
       {/* 첫 단계만 크게: 지금 바로 할 일 */}
       <section className="mt-6 overflow-hidden rounded-[22px] bg-card">
-        <Illustration height={150} seed={0} />
+        <PlayArt play={{ id: "lang-sound-1", area: "lang", title: "냄비 뚜껑으로 소리 따라 하기" }} height={150} />
         <div className="px-[18px] pb-[18px] pt-4">
           <p className="text-[12px] font-semibold text-sage-dark">처음 할 일 · 3분</p>
           <h2 className="mt-1 text-[18px] font-bold leading-[1.3] tracking-[-0.03em]">아이 정보와 질문 9개</h2>

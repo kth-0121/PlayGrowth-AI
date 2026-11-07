@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Bookmark } from "lucide-react";
 import { AREA_LABEL, type Area, type Play } from "@/types";
 import { Icon } from "@/components/Icon";
-import { Illustration } from "@/components/Illustration";
+import { PlayArt } from "@/components/PlayArt";
 import { ListGroup, ListRow } from "@/components/ListRow";
-import { H1, PageHeader } from "@/components/PageHeader";
+import { H1 } from "@/components/PageHeader";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { PageSkeleton } from "@/components/Skeleton";
 import { NoResult } from "@/components/StatusViews";
@@ -57,7 +57,7 @@ export default function PlayListPage() {
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
-      <PageHeader logo />
+      <div className="h-8" aria-hidden />
       <div className="mt-2 flex items-baseline justify-between gap-3">
         <H1>놀이 고르기</H1>
         <span className="text-[13px] font-medium text-sub">{list.length}개</span>
@@ -119,11 +119,11 @@ export default function PlayListPage() {
           />
         ) : (
           <ListGroup>
-            {list.map((p, i) => (
+            {list.map((p) => (
               <ListRow key={p.id} href={`/play/${p.id}`} chevron>
                 <div className="flex items-center gap-3">
                   <div className="size-14 shrink-0 overflow-hidden rounded-[12px]">
-                    <Illustration height={56} seed={i + p.step} />
+                    <PlayArt play={p} height={56} crop />
                   </div>
                   <div className="min-w-0 flex-1">
                     {p.id === recId && <p className="mb-0.5 text-[12px] font-semibold text-sage-dark">오늘의 놀이</p>}

@@ -8,7 +8,7 @@ import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { ListGroup, ListRow } from "@/components/ListRow";
-import { H1, PageHeader } from "@/components/PageHeader";
+import { H1 } from "@/components/PageHeader";
 import { PageSkeleton } from "@/components/Skeleton";
 import { TAB_SAFE } from "@/components/TabBar";
 import { toast } from "@/components/Toast";
@@ -60,7 +60,7 @@ export default function MyPage() {
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
-      <PageHeader logo />
+      <div className="h-8" aria-hidden />
       <H1 className="mt-2">MY</H1>
 
       {child ? (

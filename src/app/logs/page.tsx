@@ -10,7 +10,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { Illustration } from "@/components/Illustration";
 import { PageSkeleton } from "@/components/Skeleton";
-import { PageHeader } from "@/components/PageHeader";
 import { TAB_FAB_SAFE, TAB_SAFE } from "@/components/TabBar";
 import { callName } from "@/lib/copy";
 import { logTimeLabel, thisWeek, WEEKDAY, ymd } from "@/lib/dates";
@@ -26,7 +25,7 @@ export default function LogsPage() {
   if (!child) {
     return (
       <main className={`flex flex-1 flex-col gap-6 px-5 ${TAB_SAFE}`}>
-        <PageHeader logo />
+        <div className="h-8" aria-hidden />
         <EmptyState text="아이 정보를 넣고 놀이를 하면 여기에 일기처럼 쌓여요." action="아이 정보 입력" href="/onboarding" />
       </main>
     );
@@ -46,7 +45,7 @@ export default function LogsPage() {
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_FAB_SAFE}`}>
-      <PageHeader logo />
+      <div className="h-8" aria-hidden />
 
       <div className="mt-2 flex items-baseline justify-between gap-3">
         <h1 className="text-[22px] font-extrabold tracking-[-0.035em]">{callName(child.nickname)} 놀이 일기</h1>

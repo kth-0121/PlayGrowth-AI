@@ -8,11 +8,11 @@ import { Button } from "@/components/Button";
 import { Landing } from "@/components/Landing";
 import { PageSkeleton } from "@/components/Skeleton";
 import { Card } from "@/components/Card";
-import { AreaChip, TimeChip } from "@/components/Chip";
+import { AreaChip, MetaChip, TimeChip } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
-import { Illustration } from "@/components/Illustration";
-import { H1, PageHeader } from "@/components/PageHeader";
+import { H1 } from "@/components/PageHeader";
+import { PlayArt } from "@/components/PlayArt";
 import { ProgressBar } from "@/components/ProgressBar";
 import { TAB_SAFE } from "@/components/TabBar";
 import { ageInMonths } from "@/lib/age";
@@ -61,9 +61,7 @@ export default function Home() {
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
-      <PageHeader logo />
-
-      <div className="mt-2 flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 pt-8">
         <p className="text-[13px] font-medium text-sub">{longDate(today)}</p>
         <H1>
           {play
@@ -76,7 +74,7 @@ export default function Home() {
         <WaitCard data={data} today={today} logCount={logs.length} />
 
         {play ? (
-          <TodayPlay play={play} onStart={startPlay} onOther={otherPlay} />
+          <TodayPlay play={play} reason={rec?.playId === play.id ? rec.reason : null} onStart={startPlay} onOther={otherPlay} />
         ) : (
           <EmptyState
             text={
@@ -144,21 +142,46 @@ function WaitCard({
 }
 
 /** 오늘의 놀이 (홈에서 가장 큰 요소) */
-function TodayPlay({ play, onStart, onOther }: { play: Play; onStart: () => void; onOther: () => void }) {
+function TodayPlay({
+  play,
+  reason,
+  onStart,
+  onOther,
+}: {
+  play: Play;
+  reason: string | null;
+  onStart: () => void;
+  onOther: () => void;
+}) {
   return (
     <Card large className="overflow-hidden">
-      <Illustration height={128} seed={play.id.length}>
-        <span className="absolute right-3 top-3 rounded-[6px] bg-card px-2 py-1 text-[11px] font-bold text-sage-dark">
+      <div className="relative">
+        <PlayArt play={play} height={168} />
+        <span className="absolute left-3 top-3 rounded-[6px] bg-card px-2 py-1 text-[11px] font-bold text-sage-dark">
           오늘의 놀이
         </span>
-      </Illustration>
+      </div>
       <div className="px-[18px] pb-[18px] pt-4">
         <div className="flex gap-1.5">
           <AreaChip area={play.area} />
           <TimeChip minutes={play.minutes} />
+          <MetaChip>{play.step}단계</MetaChip>
         </div>
         <h2 className="mt-2.5 text-[18px] font-bold leading-[1.3] tracking-[-0.03em]">{play.title}</h2>
-        <p className="mt-1 text-[13.5px] font-medium leading-[1.55] text-sub">준비물 · {play.materials.join(", ")}</p>
+        {reason && <p className="mt-1 text-[13.5px] font-medium leading-[1.55] text-sub">{reason}</p>}
+
+        <ol className="mt-3.5 border-t border-line-soft">
+          {play.steps.map((s, i) => (
+            <li key={i} className="flex gap-2.5 border-b border-line-soft py-2.5 text-[14px] font-medium leading-[1.5]">
+              <span className="w-5 shrink-0 pt-px text-[12px] font-extrabold text-sage">{String(i + 1).padStart(2, "0")}</span>
+              <span>{s}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-2.5 text-[13px] font-medium leading-[1.55] text-sub">
+          <span className="text-ink">준비물</span> · {play.materials.join(", ")}
+        </p>
+
         <div className="mt-4 flex gap-2">
           <Button onClick={onStart} className="flex-1">
             놀이 시작
