@@ -1,46 +1,72 @@
-// 설문 문항 고르기·결과 계산
+// 설문 문항 고르기·결과 계산 (영아용·유아용 각 9문항)
 import questionsJson from "../../data/questions.json";
-import { ANSWER_SCORE, type Answer, type Area, type Question, type SurveyResult } from "@/types";
+import {
+  AGE_GROUP,
+  FREQUENCY_SCORE,
+  type AgeGroup,
+  type Area,
+  type DevQuestion,
+  type Frequency,
+  type Level,
+  type PlayStyle,
+  type QuestionSet,
+  type SurveyAnswers,
+  type SurveyResult,
+  type TempItem,
+  type TempQuestion,
+} from "@/types";
 
-export const QUESTIONS = questionsJson as Question[];
+export const QUESTION_SET = questionsJson as QuestionSet;
 export const AREA_ORDER: Area[] = ["lang", "cog", "soc", "gross", "fine"];
+export const TEMP_ORDER: TempItem[] = ["explore", "cautious", "initiative", "recovery"];
 
-export const ANSWER_LABEL: Record<Answer, string> = {
-  often: "자주 그렇다",
-  sometimes: "가끔 그렇다",
-  notYet: "아직 아니다",
+export const LEVEL_MARK: Record<Level, string> = { 0: "아직이에요", 1: "①", 2: "②", 3: "③" };
+export const FREQUENCY_LABEL: Record<Frequency, string> = {
+  often: "자주 그래요",
+  sometimes: "가끔 그래요",
+  rarely: "거의 아니에요",
 };
 
-/** 월령에 맞는 문항. 영역 순서대로 정렬. */
-export function questionsFor(months: number): Question[] {
-  return QUESTIONS.filter((q) => months >= q.months[0] && months <= q.months[1]).sort(
-    (a, b) => AREA_ORDER.indexOf(a.area) - AREA_ORDER.indexOf(b.area),
-  );
+/** 월령 → 기본 문항 세트 (영아 0~35개월, 유아 36~83개월) */
+export function groupFor(months: number): AgeGroup {
+  return months <= AGE_GROUP.infant.months[1] ? "infant" : "preschool";
 }
 
-// 영역 평균이 이 값보다 낮으면 "지원이 더 필요해 보이는 영역" (0~2점 중 "가끔"=1)
-const FOCUS_BELOW = 1.5;
+export function devQuestionsFor(group: AgeGroup): DevQuestion[] {
+  return QUESTION_SET.dev
+    .filter((q) => q.group === group)
+    .sort((a, b) => AREA_ORDER.indexOf(a.area) - AREA_ORDER.indexOf(b.area));
+}
 
-/** 설문 결과. 문항이 없는 영역은 scores에서 빠지고(-1), focus에도 들어가지 않음. */
-export function scoreSurvey(questions: Question[], answers: Record<string, Answer>): SurveyResult {
-  const sum: Partial<Record<Area, { total: number; n: number }>> = {};
-  for (const q of questions) {
-    const a = answers[q.id];
-    if (!a) continue;
-    const s = (sum[q.area] ??= { total: 0, n: 0 });
-    s.total += ANSWER_SCORE[a];
-    s.n += 1;
-  }
-  const scores = Object.fromEntries(
-    AREA_ORDER.map((area) => {
-      const s = sum[area];
-      return [area, s ? Math.round((s.total / s.n) * 100) / 100 : -1];
-    }),
-  ) as Record<Area, number>;
+export function tempQuestionsFor(group: AgeGroup): TempQuestion[] {
+  return QUESTION_SET.temp
+    .filter((q) => q.group === group)
+    .sort((a, b) => TEMP_ORDER.indexOf(a.item) - TEMP_ORDER.indexOf(b.item));
+}
 
-  const focus = AREA_ORDER.filter((a) => scores[a] >= 0 && scores[a] < FOCUS_BELOW).sort(
-    (a, b) => scores[a] - scores[b],
-  );
-  const suggestConsult = questions.some((q) => q.redFlag && answers[q.id] === "notYet");
-  return { scores, focus, suggestConsult };
+/** 결과 규칙은 src/types.ts의 SurveyResult 주석 참고 */
+export function scoreSurvey(answers: SurveyAnswers): SurveyResult {
+  const { group, dev, temp } = answers;
+  const levels = Object.fromEntries(AREA_ORDER.map((a) => [a, dev[a]])) as Record<Area, Level>;
+
+  const min = Math.min(...AREA_ORDER.map((a) => levels[a]));
+  const focus = min < 3 ? AREA_ORDER.filter((a) => levels[a] === min) : [];
+
+  const startStep = Object.fromEntries(
+    AREA_ORDER.map((a) => [a, Math.max(1, levels[a]) as 1 | 2 | 3]),
+  ) as Record<Area, 1 | 2 | 3>;
+
+  // 동점이면 신중형 → 탐색형 → 주도형 순으로 우선
+  const styleScore: [PlayStyle, number][] = [
+    ["careful", FREQUENCY_SCORE[temp.cautious]],
+    ["explorer", FREQUENCY_SCORE[temp.explore]],
+    ["leader", FREQUENCY_SCORE[temp.initiative]],
+  ];
+  const style = styleScore.reduce((best, cur) => (cur[1] > best[1] ? cur : best))[0];
+
+  const consultAreas = new Set(devQuestionsFor(group).filter((q) => q.consultIfNotYet).map((q) => q.area));
+  const notYet = AREA_ORDER.filter((a) => levels[a] === 0);
+  const suggestConsult = notYet.some((a) => consultAreas.has(a)) || notYet.length >= 2;
+
+  return { group, levels, focus, startStep, style, lowRecovery: temp.recovery === "rarely", suggestConsult };
 }

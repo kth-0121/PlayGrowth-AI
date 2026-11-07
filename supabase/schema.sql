@@ -19,7 +19,7 @@ create table children (
 create table surveys (
   id uuid primary key default gen_random_uuid(),
   child_id uuid not null references children on delete cascade,
-  answers jsonb not null,             -- { questionId: "often" | "sometimes" | "notYet" }
+  answers jsonb not null,             -- SurveyAnswers { group, dev: { 영역: 0~3 }, temp: { 항목: often|sometimes|rarely } }
   result jsonb not null,              -- SurveyResult
   created_at timestamptz default now()
 );

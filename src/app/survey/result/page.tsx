@@ -2,17 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AREA_LABEL } from "@/types";
+import { AREA_LABEL, type Level } from "@/types";
 import { Box, MissingStep, Notice, PageTitle, PrimaryButton } from "@/components/ui";
 import { ageInMonths } from "@/lib/age";
 import { currentChild, latestSurvey, saveRecommendation, useLocalData } from "@/lib/local-store";
 import { firstRecommendation } from "@/lib/recommend";
-import { AREA_ORDER } from "@/lib/survey";
+import { AREA_ORDER, QUESTION_SET } from "@/lib/survey";
 
-// 0~2점 → 부모가 이해하기 쉬운 말 (전문 용어·점수 숫자 노출 안 함)
-function levelText(score: number) {
-  if (score >= 1.5) return { text: "잘하고 있어요", cls: "bg-calm-soft text-calm" };
-  if (score >= 0.75) return { text: "조금씩 자라는 중", cls: "bg-brand-soft text-brand" };
+// 단계 0~3 → 부모가 이해하기 쉬운 말 (전문 용어·점수 숫자 노출 안 함)
+function levelText(level: Level) {
+  if (level === 3) return { text: "잘하고 있어요", cls: "bg-calm-soft text-calm" };
+  if (level === 2) return { text: "조금씩 자라는 중", cls: "bg-brand-soft text-brand" };
   return { text: "함께 놀이해 봐요", cls: "bg-brand-soft text-brand font-bold" };
 }
 
@@ -27,8 +27,8 @@ export default function SurveyResultPage() {
   if (!child || !survey)
     return <MissingStep text="설문을 먼저 해 주세요." href={child ? "/survey" : "/child"} label="설문하러 가기" />;
 
-  const { scores, focus, suggestConsult } = survey.result;
-  const asked = AREA_ORDER.filter((a) => scores[a] >= 0);
+  const { levels, focus, style, lowRecovery, suggestConsult } = survey.result;
+  const styleInfo = QUESTION_SET.styles[style];
 
   function goPlay() {
     if (!child || !survey) return;
@@ -45,15 +45,15 @@ export default function SurveyResultPage() {
 
       <Box title="영역별 모습">
         <ul className="flex flex-col gap-3">
-          {asked.map((a) => {
-            const lv = levelText(scores[a]);
+          {AREA_ORDER.map((a) => {
+            const lv = levelText(levels[a]);
             return (
               <li key={a} className="flex items-center gap-3">
                 <span className="w-14 shrink-0 text-sm font-medium">{AREA_LABEL[a]}</span>
                 <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-line">
                   <span
                     className="block h-full rounded-full bg-calm"
-                    style={{ width: `${Math.max(8, (scores[a] / 2) * 100)}%` }}
+                    style={{ width: `${Math.max(8, (levels[a] / 3) * 100)}%` }}
                   />
                 </span>
                 <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs ${lv.cls}`}>{lv.text}</span>
@@ -71,6 +71,13 @@ export default function SurveyResultPage() {
         ) : (
           <p className="text-sm">전체적으로 고르게 자라고 있어요. 좋아하는 놀이로 즐겁게 이어가 봐요.</p>
         )}
+      </Box>
+
+      <Box title={`우리 아이 놀이 스타일 · ${styleInfo.label}`}>
+        <ul className="flex flex-col gap-1.5 text-sm leading-relaxed">
+          <li>{styleInfo.tip}</li>
+          {lowRecovery && <li>{QUESTION_SET.lowRecoveryTip}</li>}
+        </ul>
       </Box>
 
       {suggestConsult && (

@@ -1,7 +1,70 @@
-[
-  { "id": "lang-12-01", "area": "lang", "months": [12, 23], "text": "이름을 부르면 돌아보나요?", "redFlag": true },
-  { "id": "cog-12-01", "area": "cog", "months": [12, 23], "text": "숨긴 장난감을 찾으려고 하나요?", "redFlag": false },
-  { "id": "soc-12-01", "area": "soc", "months": [12, 23], "text": "보고 싶은 것을 손가락으로 가리키나요?", "redFlag": true },
-  { "id": "gross-12-01", "area": "gross", "months": [12, 23], "text": "혼자 몇 걸음 걸을 수 있나요?", "redFlag": false },
-  { "id": "fine-12-01", "area": "fine", "months": [12, 23], "text": "블록을 2개 이상 쌓을 수 있나요?", "redFlag": false }
-]
+{
+  "dev": [
+    {
+      "id": "infant-lang", "group": "infant", "area": "lang",
+      "levels": ["소리를 내거나 옹알이를 해요", "'맘마', '엄마'처럼 뜻이 있는 한 단어를 말해요", "'물 줘'처럼 두 단어를 이어 말해요"],
+      "notYet": "소리를 내는 일이 거의 없어요", "consultIfNotYet": true
+    },
+    {
+      "id": "infant-cog", "group": "infant", "area": "cog",
+      "levels": ["눈앞의 장난감을 눈으로 따라가거나 손을 뻗어요", "천으로 숨긴 장난감을 찾아요", "컵에 넣기, 뚜껑 열기를 보고 따라 해요"],
+      "notYet": "장난감에 관심을 보이는 일이 거의 없어요", "consultIfNotYet": false
+    },
+    {
+      "id": "infant-soc", "group": "infant", "area": "soc",
+      "levels": ["눈을 맞추고 웃어요", "이름을 부르면 돌아보거나, 원하는 것을 손가락으로 가리켜요", "까꿍, 공 주고받기 같은 놀이를 함께해요"],
+      "notYet": "눈 맞춤이나 웃음 반응이 거의 없어요", "consultIfNotYet": true
+    },
+    {
+      "id": "infant-gross", "group": "infant", "area": "gross",
+      "levels": ["엎드려서 고개를 들거나 혼자 앉아요", "무언가를 잡고 서거나 걸어요", "혼자 걷고, 계단을 잡고 올라가요"],
+      "notYet": "고개 가누기나 앉기가 아직 어려워요", "consultIfNotYet": false
+    },
+    {
+      "id": "infant-fine", "group": "infant", "area": "fine",
+      "levels": ["물건을 손에 쥐어요", "엄지와 검지로 작은 것을 집어요", "블록 2~3개를 쌓거나 크레파스로 끄적여요"],
+      "notYet": "물건을 쥐는 것이 아직 어려워요", "consultIfNotYet": false
+    },
+    {
+      "id": "preschool-lang", "group": "preschool", "area": "lang",
+      "levels": ["두 단어로 원하는 것을 말해요", "문장으로 있었던 일을 말해요", "순서대로 이야기하거나 \"왜?\"라고 물어요"],
+      "notYet": "말로 표현하는 것이 아직 어려워요", "consultIfNotYet": true
+    },
+    {
+      "id": "preschool-cog", "group": "preschool", "area": "cog",
+      "levels": ["같은 색이나 같은 모양끼리 짝을 맞춰요", "크다·작다, 많다·적다를 구별해요", "차례나 순서 같은 간단한 규칙을 이해해요"],
+      "notYet": "짝 맞추기가 아직 어려워요", "consultIfNotYet": false
+    },
+    {
+      "id": "preschool-soc", "group": "preschool", "area": "soc",
+      "levels": ["다른 아이 옆에서 따로 놀아요", "장난감을 주고받거나 차례를 기다려요", "친구와 역할을 나눠 함께 놀아요"],
+      "notYet": "다른 사람과 함께 노는 것이 아직 어려워요", "consultIfNotYet": true
+    },
+    {
+      "id": "preschool-gross", "group": "preschool", "area": "gross",
+      "levels": ["넘어지지 않고 뛰어요", "두 발을 모아 제자리에서 뛰어요", "한 발로 잠깐 서거나 공을 차고 받아요"],
+      "notYet": "혼자 걷는 것이 아직 불안정해요", "consultIfNotYet": false
+    },
+    {
+      "id": "preschool-fine", "group": "preschool", "area": "fine",
+      "levels": ["크레파스로 끄적여요", "동그라미나 선을 따라 그려요", "가위로 종이를 자르거나 단추를 끼워요"],
+      "notYet": "크레파스를 쥐는 것이 아직 어려워요", "consultIfNotYet": false
+    }
+  ],
+  "temp": [
+    { "id": "infant-explore", "group": "infant", "item": "explore", "text": "처음 보는 장난감이나 소리에 먼저 손을 뻗거나 다가가요" },
+    { "id": "infant-cautious", "group": "infant", "item": "cautious", "text": "낯선 사람이나 장소에서는 한동안 보호자 곁에서 지켜봐요" },
+    { "id": "infant-initiative", "group": "infant", "item": "initiative", "text": "원하는 것을 소리나 몸짓으로 분명하게 요구해요" },
+    { "id": "infant-recovery", "group": "infant", "item": "recovery", "text": "울거나 속상해도 안아주고 달래면 금방 진정돼요" },
+    { "id": "preschool-explore", "group": "preschool", "item": "explore", "text": "새로운 놀이를 보면 먼저 해 보겠다고 나서요" },
+    { "id": "preschool-cautious", "group": "preschool", "item": "cautious", "text": "새로운 놀이는 한참 지켜본 뒤에 시작해요" },
+    { "id": "preschool-initiative", "group": "preschool", "item": "initiative", "text": "놀이 방법이나 순서를 스스로 정하고 싶어 해요" },
+    { "id": "preschool-recovery", "group": "preschool", "item": "recovery", "text": "잘 안 되거나 져서 속상해도 다시 해 보려고 해요" }
+  ],
+  "styles": {
+    "explorer": { "label": "탐색형", "tip": "재료를 먼저 마음껏 만져보게 해 주세요" },
+    "careful": { "label": "신중형", "tip": "부모가 먼저 놀이하는 모습을 보여주고 기다려 주세요" },
+    "leader": { "label": "주도형", "tip": "두 가지 방법 중에서 아이가 고르게 해 주세요" }
+  },
+  "lowRecoveryTip": "5분씩 짧게 나누고, 잘 안 되면 바로 쉬운 단계로 돌아가요"
+}
