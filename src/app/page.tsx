@@ -1,69 +1,38 @@
-import Image from "next/image";
+import Link from "next/link";
+
+const STEPS = [
+  { icon: "👶", title: "아이 정보", desc: "애칭과 생년월일만 있으면 돼요" },
+  { icon: "📝", title: "발달 상태 확인", desc: "평소 모습을 떠올리며 답해 주세요" },
+  { icon: "🧸", title: "맞춤 놀이", desc: "집에 있는 물건으로 10~20분" },
+  { icon: "📷", title: "기록하기", desc: "기록이 쌓이면 다음 놀이가 더 잘 맞아요" },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex flex-col gap-8">
+      <section className="rounded-3xl bg-brand-soft px-6 py-10">
+        <p className="text-sm font-medium text-brand">센터를 기다리는 동안</p>
+        <h1 className="mt-2 text-3xl font-bold leading-tight">집에서 함께하는 맞춤 놀이</h1>
+        <p className="mt-3 text-muted">무엇을 해야 할지 막막할 때, 우리 아이에게 맞는 놀이를 알려 드려요.</p>
+        <Link
+          href="/child"
+          className="mt-6 inline-flex h-12 items-center rounded-full bg-brand px-6 font-bold text-white dark:text-black"
+        >
+          시작하기
+        </Link>
+      </section>
+
+      <ol className="grid gap-3">
+        {STEPS.map((s) => (
+          <li key={s.title} className="flex items-center gap-4 rounded-2xl border border-line bg-card px-5 py-4">
+            <span className="text-2xl">{s.icon}</span>
+            <div>
+              <p className="font-bold">{s.title}</p>
+              <p className="text-sm text-muted">{s.desc}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
