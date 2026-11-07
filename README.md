@@ -82,3 +82,4 @@ supabase/schema.sql DB 스키마·접근 권한  ← 계약
 - 커밋 메시지: `feat: 간편 체크 화면`, `fix: 기록 저장 오류`, `docs: README 수정`
 - PR 본문에 `Closes #이슈번호`를 적으면 merge할 때 이슈가 자동으로 닫힘
 - API 키는 `.env.local`에만 저장 (커밋 금지)
+- AI 도구(Claude 등)를 써도 커밋·PR에 AI 기여자 표기(`Co-Authored-By: Claude ...`, "Generated with Claude Code" 등)를 넣지 않음
