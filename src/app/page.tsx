@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import type { Done, Play } from "@/types";
+import { AREA_LABEL, type Area, type Done, type Play } from "@/types";
 import { Button, TextButton } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { AreaChip, TimeChip } from "@/components/Chip";
@@ -25,11 +26,13 @@ import {
   seedDemo,
   useLocalData,
 } from "@/lib/local-store";
-import { firstRecommendation, getPlay, nextPlay } from "@/lib/recommend";
+import { areasForMonths, firstRecommendation, getPlay, nextPlay, pickInArea } from "@/lib/recommend";
+import { AREA_ORDER } from "@/lib/survey";
 
 export default function Home() {
   const router = useRouter();
   const data = useLocalData();
+  const [picking, setPicking] = useState(false); // '다른 놀이' 영역 고르기 시트
 
   if (!data) return <main className={`flex-1 px-5 ${TAB_SAFE}`} />;
 
@@ -64,10 +67,17 @@ export default function Home() {
   const logs = childLogs(data, child.id);
   const doneToday = logs.filter((l) => ymd(new Date(l.createdAt)) === ymd(today)).length;
 
-  function otherPlay() {
+  // 영역 고르기 시트에서 고른 결과. area가 null이면 '추천대로'(지금처럼 다음 놀이)
+  function otherPlay(area: Area | null) {
+    setPicking(false);
     if (!child || !play) return;
-    const p = nextPlay(play.id, months);
-    if (p) saveRecommendation({ childId: child.id, playId: p.id, reason: "다른 놀이로 바꿨어요" });
+    if (area === null) {
+      const p = nextPlay(play.id, months);
+      if (p) saveRecommendation({ childId: child.id, playId: p.id, reason: "다른 놀이로 바꿨어요" });
+      return;
+    }
+    const pick = pickInArea(area, survey?.result ?? null, months, play.id, logs);
+    if (pick) saveRecommendation({ childId: child.id, playId: pick.play.id, reason: pick.reason });
   }
 
   function startPlay() {
@@ -93,7 +103,7 @@ export default function Home() {
         <WaitCard data={data} today={today} logCount={logs.length} />
 
         {play ? (
-          <TodayPlay play={play} doneToday={doneToday} onStart={startPlay} onOther={otherPlay} />
+          <TodayPlay play={play} doneToday={doneToday} onStart={startPlay} onOther={() => setPicking(true)} />
         ) : (
           <EmptyState
             text={`${callName(child.nickname)}에게 맞는 놀이를 고르려면 평소 모습에 대한 질문에 답해 주세요.`}
@@ -104,7 +114,93 @@ export default function Home() {
 
         <WeekCard logs={logs} today={today} />
       </div>
+
+      {picking && play && (
+        <AreaSheet
+          current={play.area}
+          focus={survey?.result.focus ?? []}
+          available={areasForMonths(months)}
+          onPick={otherPlay}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </main>
+  );
+}
+
+/** '다른 놀이' → 어떤 영역으로 바꿀지 고르는 바텀시트 */
+function AreaSheet({
+  current,
+  focus,
+  available,
+  onPick,
+  onClose,
+}: {
+  current: Area;
+  focus: Area[]; // 설문에서 더 함께하면 좋은 영역 → '추천' 표시
+  available: Set<Area>; // 이 월령에 놀이가 있는 영역
+  onPick: (area: Area | null) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center">
+      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-ink/40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="area-sheet-title"
+        className="relative w-full max-w-[480px] rounded-t-[22px] bg-card px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-3"
+      >
+        <span className="mx-auto block h-1 w-10 rounded-full bg-line" aria-hidden />
+        <h2 id="area-sheet-title" className="mt-4 text-[18px] font-bold">
+          어떤 놀이를 해 볼까요?
+        </h2>
+        <p className="mt-1 text-[13px] font-medium text-sub">고른 영역에서 지금 단계에 맞는 놀이로 바꿔요.</p>
+
+        <Button full onClick={() => onPick(null)} className="mt-4">
+          추천대로 바꾸기
+        </Button>
+
+        <ul className="mt-3 grid grid-cols-2 gap-2">
+          {AREA_ORDER.map((a) => {
+            const ok = available.has(a);
+            return (
+              <li key={a}>
+                <button
+                  type="button"
+                  disabled={!ok}
+                  onClick={() => onPick(a)}
+                  className="pressable flex min-h-[56px] w-full flex-col items-start justify-center rounded-[12px] border border-line bg-card px-3.5 py-2 text-left disabled:opacity-40"
+                >
+                  <span className="flex items-center gap-1.5 text-[14.5px] font-bold">
+                    {AREA_PLAY_NAME[a]}
+                    {focus.includes(a) && (
+                      <span className="rounded-[6px] bg-sage-light px-1.5 py-0.5 text-[11px] font-bold text-sage-dark">
+                        추천
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[12px] font-medium text-sub">
+                    {AREA_LABEL[a]}
+                    {a === current ? " · 지금 영역" : ""}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        <TextButton onClick={onClose} className="mt-3 w-full">
+          닫기
+        </TextButton>
+      </div>
+    </div>
   );
 }
 

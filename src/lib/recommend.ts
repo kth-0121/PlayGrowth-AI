@@ -108,3 +108,30 @@ export function nextPlay(currentId: string, months: number, plays = PLAYS): Play
   const i = list.findIndex((p) => p.id === currentId);
   return list[(i + 1) % list.length];
 }
+
+/**
+ * 홈 '다른 놀이' → 영역 고르기: 고른 영역에서 지금 놀이를 뺀 놀이 중
+ * 설문 단계(startStep) 이하에서 가장 높은 단계 → 그 단계에서 덜 해본 놀이 순
+ */
+export function pickInArea(
+  area: Area,
+  result: SurveyResult | null,
+  months: number,
+  currentId: string | null,
+  logs: PlayLog[],
+  plays = PLAYS,
+): Pick | null {
+  const inArea = eligible(months, plays).filter((p) => p.area === area && p.id !== currentId);
+  if (!inArea.length) return null;
+  const start = result?.startStep[area] ?? 1;
+  const steps = inArea.map((p) => p.step).filter((s) => s <= start);
+  const target = steps.length ? Math.max(...steps) : Math.min(...inArea.map((p) => p.step));
+  const done = (id: string) => logs.filter((l) => l.playId === id).length;
+  const play = inArea.filter((p) => p.step === target).sort((a, b) => done(a.id) - done(b.id))[0];
+  return { play, reason: `${AREA_LABEL[area]} 놀이로 골랐어요` };
+}
+
+/** 이 월령에서 추천 가능한 놀이가 있는 영역 */
+export function areasForMonths(months: number, plays = PLAYS): Set<Area> {
+  return new Set(eligible(months, plays).map((p) => p.area));
+}

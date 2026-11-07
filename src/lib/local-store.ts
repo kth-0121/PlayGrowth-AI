@@ -48,6 +48,16 @@ export type Post = {
   createdAt: string;
 };
 
+// 댓글 (comments 테이블). DB에 닉네임 칸이 없어서 남의 댓글은 '익명', 내 댓글은 쓸 때의 닉네임으로 보여줌
+export type Comment = {
+  id: string;
+  postId: string;
+  nickname: string;
+  body: string;
+  mine: boolean;
+  createdAt: string;
+};
+
 type Data = {
   currentChildId: string | null;
   children: Child[];
@@ -56,6 +66,7 @@ type Data = {
   playLogs: PlayLog[];
   center: CenterWait | null;
   posts: Post[];
+  comments: Comment[]; // 글 상세를 열 때 그 글의 댓글을 불러와 채움
 };
 
 const KEY = "noridari:v2"; // v2: 설문 형식 변경(영아·유아 9문항). 이전 임시 데이터는 무시
@@ -67,6 +78,7 @@ const EMPTY: Data = {
   playLogs: [],
   center: null,
   posts: [],
+  comments: [],
 };
 const listeners = new Set<() => void>();
 let cacheRaw: string | null | undefined;
@@ -139,7 +151,7 @@ export async function syncFromServer(uid: string) {
     .reverse(); // 최신 글 먼저
   const pr = profile.data;
   const center = pr?.center_name ? { name: pr.center_name, waitStart: pr.wait_start ?? "", consultDate: pr.consult_date ?? "" } : null;
-  write(() => ({ currentChildId: kids.at(-1)?.id ?? null, children: kids, surveys, recommendations, playLogs, posts, center }));
+  write(() => ({ currentChildId: kids.at(-1)?.id ?? null, children: kids, surveys, recommendations, playLogs, posts, center, comments: [] }));
 }
 
 /** 로그아웃 시 이 기기의 캐시 비우기 */
@@ -194,6 +206,62 @@ export function savePost(p: Omit<Post, "id" | "createdAt" | "comments">): Post {
   write((d) => ({ ...d, posts: [row, ...d.posts] }));
   if (userId) push("posts", { id: row.id, authorId: userId, nickname: row.nickname, board: row.board, playId: row.playId, title: row.title, body: row.body });
   return row;
+}
+
+/** 글 상세를 열 때 그 글의 댓글을 서버에서 불러와 캐시에 넣음 (로그인 안 했으면 캐시만 씀) */
+export async function loadComments(postId: string) {
+  if (!userId) return;
+  const me = userId;
+  const { data, error } = await supabase
+    .from("comments")
+    .select("id, post_id, author_id, body, created_at")
+    .eq("post_id", postId)
+    .order("created_at");
+  if (error) return console.error("[noridari] 댓글 불러오기 실패", error.message);
+  const rows = (data ?? []) as { id: string; post_id: string; author_id: string; body: string; created_at: string }[];
+  write((d) => {
+    const mineLocal = new Map(d.comments.filter((c) => c.mine).map((c) => [c.id, c.nickname]));
+    const server: Comment[] = rows.map((r) => ({
+      id: r.id,
+      postId: r.post_id,
+      nickname: r.author_id === me ? (mineLocal.get(r.id) ?? "나") : "익명",
+      body: r.body,
+      mine: r.author_id === me,
+      createdAt: r.created_at,
+    }));
+    const ids = new Set(server.map((c) => c.id));
+    // 방금 쓴 댓글이 아직 서버에 없으면 남겨 둠
+    const pending = d.comments.filter((c) => c.postId === postId && c.mine && !ids.has(c.id));
+    return { ...d, comments: [...d.comments.filter((c) => c.postId !== postId), ...server, ...pending] };
+  });
+}
+
+/** localOnly: 시연용 가짜 글처럼 서버에 없는 글이면 이 기기에만 저장 */
+export function saveComment(c: Pick<Comment, "postId" | "nickname" | "body">, localOnly = false): Comment {
+  const row: Comment = { ...c, id: uid(), mine: true, createdAt: now() };
+  write((d) => ({
+    ...d,
+    comments: [...d.comments, row],
+    posts: d.posts.map((p) => (p.id === c.postId ? { ...p, comments: p.comments + 1 } : p)),
+  }));
+  if (userId && !localOnly) push("comments", { id: row.id, postId: row.postId, authorId: userId, body: row.body });
+  return row;
+}
+
+export function deleteComment(id: string) {
+  const target = read().comments.find((c) => c.id === id);
+  if (!target?.mine) return;
+  write((d) => ({
+    ...d,
+    comments: d.comments.filter((c) => c.id !== id),
+    posts: d.posts.map((p) => (p.id === target.postId ? { ...p, comments: Math.max(0, p.comments - 1) } : p)),
+  }));
+  if (userId)
+    supabase
+      .from("comments")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => error && console.error("[noridari] 댓글 삭제 실패", error.message));
 }
 
 /** 아이 정보·기록·사진 전부 삭제 (서버 포함). 커뮤니티 글은 남김 */

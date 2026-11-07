@@ -7,7 +7,7 @@ import { ListGroup, ListRow } from "@/components/ListRow";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { TAB_FAB_SAFE } from "@/components/TabBar";
 import { timeAgo } from "@/lib/dates";
-import { DEMO_POSTS } from "@/lib/demo-posts";
+import { commentCount, DEMO_POSTS } from "@/lib/demo-posts";
 import { useLocalData } from "@/lib/local-store";
 
 const BOARDS: { key: Board; label: string }[] = [
@@ -51,11 +51,11 @@ export default function CommunityPage() {
 
       <ListGroup className="mt-4">
         {posts.map((p) => (
-          <ListRow key={p.id}>
+          <ListRow key={p.id} href={`/community/post?id=${p.id}`} chevron>
             <p className="text-[15px] font-bold leading-[1.4]">{p.title}</p>
             <p className="mt-1 line-clamp-2 text-[13.5px] font-medium leading-[1.55] text-sub">{p.body}</p>
             <p className="mt-1.5 text-[12px] font-medium text-mute">
-              {p.nickname} · {now && timeAgo(p.createdAt, now)} · 댓글 {p.comments}
+              {p.nickname} · {now && timeAgo(p.createdAt, now)} · 댓글 {data ? commentCount(p, data.comments) : p.comments}
             </p>
           </ListRow>
         ))}
