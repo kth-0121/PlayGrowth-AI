@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
+/* 따뜻하고 부드러운 색감 */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fdf9f3;
+  --foreground: #3a2f28;
+  --card: #ffffff;
+  --line: #efe4d6;
+  --muted: #8a7a6d;
+  --brand: #e07a4f;
+  --brand-soft: #fcebe1;
+  --calm: #6aa58a;
+  --calm-soft: #e5f2ec;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1c1916;
+    --foreground: #f1e9e0;
+    --card: #26221e;
+    --line: #3a332c;
+    --muted: #b3a597;
+    --brand: #f0956c;
+    --brand-soft: #3a2a21;
+    --calm: #8cc7aa;
+    --calm-soft: #23332b;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-calm: var(--calm);
+  --color-calm-soft: var(--calm-soft);
+  --font-sans: var(--font-noto-kr), system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  word-break: keep-all;
 }
