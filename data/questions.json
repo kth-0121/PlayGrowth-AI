@@ -1,0 +1,7 @@
+[
+  { "id": "lang-12-01", "area": "lang", "months": [12, 23], "text": "이름을 부르면 돌아보나요?", "redFlag": true },
+  { "id": "cog-12-01", "area": "cog", "months": [12, 23], "text": "숨긴 장난감을 찾으려고 하나요?", "redFlag": false },
+  { "id": "soc-12-01", "area": "soc", "months": [12, 23], "text": "보고 싶은 것을 손가락으로 가리키나요?", "redFlag": true },
+  { "id": "gross-12-01", "area": "gross", "months": [12, 23], "text": "혼자 몇 걸음 걸을 수 있나요?", "redFlag": false },
+  { "id": "fine-12-01", "area": "fine", "months": [12, 23], "text": "블록을 2개 이상 쌓을 수 있나요?", "redFlag": false }
+]
