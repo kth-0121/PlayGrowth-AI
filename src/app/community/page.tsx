@@ -7,7 +7,7 @@ import { ListGroup, ListRow } from "@/components/ListRow";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { TAB_FAB_SAFE } from "@/components/TabBar";
 import { timeAgo } from "@/lib/dates";
-import { DEMO_POSTS } from "@/lib/demo-posts";
+import { allPosts, isUnverifiedClaim, postComments } from "@/lib/community";
 import { useLocalData } from "@/lib/local-store";
 
 const BOARDS: { key: Board; label: string }[] = [
@@ -16,16 +16,12 @@ const BOARDS: { key: Board; label: string }[] = [
   { key: "worry", label: "고민 나누기" },
 ];
 
-// 효과를 단정하는 표현이 있으면 '검증되지 않은 정보' 표시 (TODO: 관리자 검토로 대체)
-const CLAIM_WORDS = ["효과", "좋아졌", "나아졌", "확 늘", "고쳐", "완치", "무조건"];
-const isUnverifiedClaim = (text: string) => CLAIM_WORDS.some((w) => text.includes(w));
-
 export default function CommunityPage() {
   const data = useLocalData();
   const [board, setBoard] = useState<Board>("review");
 
   // 서버 렌더 중(data 없음)에는 현재 시각을 읽지 않음
-  const posts = data ? [...data.posts, ...DEMO_POSTS].filter((p) => p.board === board) : [];
+  const posts = data ? allPosts(data).filter((p) => p.board === board) : [];
   const now = data ? new Date() : null;
 
   return (
@@ -55,7 +51,7 @@ export default function CommunityPage() {
 
       <ListGroup className="mt-4">
         {posts.map((p) => (
-          <ListRow key={p.id}>
+          <ListRow key={p.id} href={`/community/post?id=${p.id}`}>
             <p className="text-[15px] font-bold leading-[1.4]">{p.title}</p>
             {isUnverifiedClaim(p.title + p.body) && (
               <span className="mt-1.5 inline-flex rounded-[7px] bg-warm px-2 py-1 text-[11.5px] font-bold leading-none text-sub">
@@ -64,7 +60,7 @@ export default function CommunityPage() {
             )}
             <p className="mt-1 line-clamp-2 text-[13.5px] font-medium leading-[1.55] text-sub">{p.body}</p>
             <p className="mt-1.5 text-[12px] font-medium text-mute">
-              {p.nickname} · {now && timeAgo(p.createdAt, now)} · 댓글 {p.comments}
+              {p.nickname} · {now && timeAgo(p.createdAt, now)} · 댓글 {data ? postComments(data, p.id).length : 0}
             </p>
           </ListRow>
         ))}

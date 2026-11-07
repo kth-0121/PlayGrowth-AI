@@ -44,8 +44,22 @@ export type Post = {
   body: string;
   playId: string | null;
   comments: number;
+  feedback?: Partial<Record<PostFeedback, number>>; // 예시 글의 기본 반응 수
   createdAt: string;
 };
+
+// 커뮤니티 댓글. mine = 이 기기에서 쓴 댓글 (삭제 가능)
+export type Comment = {
+  id: string;
+  postId: string;
+  nickname: string;
+  body: string;
+  mine: boolean;
+  createdAt: string;
+};
+
+// 글에 남기는 반응 (도움이 됐어요 · 응원해요). 이 기기에서 누른 것만 저장
+export type PostFeedback = "helpful" | "cheer";
 
 type Data = {
   currentChildId: string | null;
@@ -55,6 +69,8 @@ type Data = {
   playLogs: PlayLog[];
   center: CenterWait | null;
   posts: Post[];
+  comments: Comment[];
+  feedback: { postId: string; kind: PostFeedback }[];
 };
 
 const KEY = "noridari:v2"; // v2: 설문 형식 변경(영아·유아 9문항). 이전 임시 데이터는 무시
@@ -66,6 +82,8 @@ const EMPTY: Data = {
   playLogs: [],
   center: null,
   posts: [],
+  comments: [],
+  feedback: [],
 };
 const listeners = new Set<() => void>();
 let cacheRaw: string | null | undefined;
@@ -130,6 +148,30 @@ export function savePost(p: Omit<Post, "id" | "createdAt" | "comments">): Post {
   const row: Post = { ...p, id: uid(), comments: 0, createdAt: now() };
   write((d) => ({ ...d, posts: [row, ...d.posts] }));
   return row;
+}
+
+export function saveComment(c: Pick<Comment, "postId" | "nickname" | "body">): Comment {
+  const row: Comment = { ...c, id: uid(), mine: true, createdAt: now() };
+  write((d) => ({ ...d, comments: [...d.comments, row] }));
+  return row;
+}
+
+/** 이 기기에서 쓴 댓글만 지울 수 있음 */
+export function deleteComment(id: string) {
+  write((d) => ({ ...d, comments: d.comments.filter((c) => !(c.id === id && c.mine)) }));
+}
+
+/** 반응 누르기/취소 */
+export function toggleFeedback(postId: string, kind: PostFeedback) {
+  write((d) => {
+    const on = d.feedback.some((f) => f.postId === postId && f.kind === kind);
+    return {
+      ...d,
+      feedback: on
+        ? d.feedback.filter((f) => !(f.postId === postId && f.kind === kind))
+        : [...d.feedback, { postId, kind }],
+    };
+  });
 }
 
 export function clearAll() {
