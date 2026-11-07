@@ -16,6 +16,8 @@ create table children (
   nickname text not null,             -- 애칭, 실명 저장 안 함
   birth_date date not null,
   consent_at timestamptz not null,    -- 보호자 동의 시각
+  likes text[] not null default '{}',         -- 좋아하는 놀이 종류 (영역 코드, ChildPrefs.likes)
+  concern_areas text[] not null default '{}', -- 더 함께 놀아 주고 싶은 영역 (ChildPrefs.concernAreas)
   created_at timestamptz default now()
 );
 

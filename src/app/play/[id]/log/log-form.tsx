@@ -12,7 +12,7 @@ import { Icon } from "@/components/Icon";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { callName } from "@/lib/copy";
 import { ageInMonths } from "@/lib/age";
-import { childLogs, currentChild, latestSurvey, savePlayLog, saveRecommendation, useLocalData } from "@/lib/local-store";
+import { childLogs, childPrefs, currentChild, latestSurvey, savePlayLog, saveRecommendation, useLocalData } from "@/lib/local-store";
 import { nextRecommendation, type Pick } from "@/lib/recommend";
 import { uploadPhoto } from "@/lib/supabase";
 
@@ -60,7 +60,7 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
     const log = savePlayLog({ childId: child.id, playId, done, reaction, memo: memo.trim() || null, photoPaths });
     // 방금 기록까지 반영해 다음 놀이 추천 → 기록 목록 상단과 홈 '오늘의 놀이'에 보임
     const logs = [...childLogs(data!, child.id), log];
-    const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs);
+    const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs, undefined, childPrefs(child));
     if (next) saveRecommendation({ childId: child.id, playId: next.play.id, reason: next.reason });
     // 저장 후 바로 다음 놀이로 이어갈 수 있게 완료 화면을 보여줌
     setSaved({ next });

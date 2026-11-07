@@ -19,6 +19,7 @@ import { AREA_PLAY_NAME, callName, josa } from "@/lib/copy";
 import { daysBetween, longDate, thisWeek, WEEKDAY, ymd } from "@/lib/dates";
 import {
   childLogs,
+  childPrefs,
   currentChild,
   latestRecommendation,
   latestSurvey,
@@ -26,7 +27,7 @@ import {
   seedDemo,
   useLocalData,
 } from "@/lib/local-store";
-import { areasForMonths, firstRecommendation, getPlay, nextPlay, pickInArea } from "@/lib/recommend";
+import { areaPriority, areasForMonths, firstRecommendation, getPlay, nextPlay, pickInArea } from "@/lib/recommend";
 import { AREA_ORDER } from "@/lib/survey";
 
 export default function Home() {
@@ -62,8 +63,12 @@ export default function Home() {
   const months = ageInMonths(child.birthDate);
   const survey = latestSurvey(data, child.id);
   const rec = latestRecommendation(data, child.id);
+  const prefs = childPrefs(child);
+  const hasPrefs = prefs.concernAreas.length > 0 || prefs.likes.length > 0;
+  // 설문을 안 했어도 부모가 관심을 골랐으면 그걸로 시작
   const play: Play | null =
-    (rec && getPlay(rec.playId)) || (survey ? (firstRecommendation(survey.result, months)?.play ?? null) : null);
+    (rec && getPlay(rec.playId)) ||
+    (survey || hasPrefs ? (firstRecommendation(survey?.result ?? null, months, undefined, prefs)?.play ?? null) : null);
   const logs = childLogs(data, child.id);
   const doneToday = logs.filter((l) => ymd(new Date(l.createdAt)) === ymd(today)).length;
 
@@ -118,7 +123,8 @@ export default function Home() {
       {picking && play && (
         <AreaSheet
           current={play.area}
-          focus={survey?.result.focus ?? []}
+          focus={areaPriority(survey?.result ?? null, prefs)}
+          likes={prefs.likes}
           available={areasForMonths(months)}
           onPick={otherPlay}
           onClose={() => setPicking(false)}
@@ -132,12 +138,14 @@ export default function Home() {
 function AreaSheet({
   current,
   focus,
+  likes,
   available,
   onPick,
   onClose,
 }: {
   current: Area;
-  focus: Area[]; // 설문에서 더 함께하면 좋은 영역 → '추천' 표시
+  focus: Area[]; // 설문 focus + 부모가 고른 영역 → '추천' 표시
+  likes: Area[]; // 좋아하는 놀이 → '좋아해요' 표시
   available: Set<Area>; // 이 월령에 놀이가 있는 영역
   onPick: (area: Area | null) => void;
   onClose: () => void;
@@ -184,6 +192,9 @@ function AreaSheet({
                       <span className="rounded-[6px] bg-sage-light px-1.5 py-0.5 text-[11px] font-bold text-sage-dark">
                         추천
                       </span>
+                    )}
+                    {likes.includes(a) && (
+                      <span className="rounded-[6px] bg-warm px-1.5 py-0.5 text-[11px] font-bold text-sub">좋아해요</span>
                     )}
                   </span>
                   <span className="text-[12px] font-medium text-sub">

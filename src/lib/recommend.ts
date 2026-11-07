@@ -4,7 +4,7 @@
 //    즐거워함+완료 → 같은 놀이 한 단계 위 / 어려워함·못함 → 한 단계 아래, 이미 가장 쉬우면 다른 방식 / 그 외 → 같은 단계의 다른 놀이
 // 3) 균형: 최근 기록 3개가 모두 같은 영역이면 덜 해본 영역으로 바꿈
 import playsJson from "../../data/plays.json";
-import { AREA_LABEL, type Area, type Play, type PlayLog, type SurveyResult } from "@/types";
+import { AREA_LABEL, type Area, type ChildPrefs, type Play, type PlayLog, type SurveyResult } from "@/types";
 
 export const PLAYS = playsJson as Play[];
 
@@ -36,11 +36,35 @@ function atStartStep(ok: Play[], area: Area, result: SurveyResult | null): Play 
   return inArea.find((p) => p.step === target);
 }
 
-export function firstRecommendation(result: SurveyResult, months: number, plays = PLAYS): Pick | null {
+const NO_PREFS: ChildPrefs = { likes: [], concernAreas: [] };
+
+/** 먼저 함께할 영역 순서: 설문 focus·부모 선택 둘 다 → focus만 → 부모 선택만 (규칙은 src/types.ts ChildPrefs) */
+export function areaPriority(result: SurveyResult | null, prefs: ChildPrefs = NO_PREFS): Area[] {
+  const focus = result?.focus ?? [];
+  const concern = prefs.concernAreas;
+  const both = focus.filter((a) => concern.includes(a));
+  return [...new Set([...both, ...focus, ...concern])];
+}
+
+export function firstRecommendation(
+  result: SurveyResult | null,
+  months: number,
+  plays = PLAYS,
+  prefs: ChildPrefs = NO_PREFS,
+): Pick | null {
   const ok = eligible(months, plays);
-  for (const area of result.focus) {
+  for (const area of areaPriority(result, prefs)) {
     const play = atStartStep(ok, area, result);
-    if (play) return { play, reason: `${AREA_LABEL[area]} 영역을 지금 모습에 맞는 ${play.step}단계부터 시작해요` };
+    if (!play) continue;
+    const chosen = prefs.concernAreas.includes(area);
+    const why = chosen && !result?.focus.includes(area) ? "더 함께하고 싶다고 고른" : "";
+    const lead = why ? `${why} ${AREA_LABEL[area]} 영역을` : `${AREA_LABEL[area]} 영역을 지금 모습에 맞는`;
+    return { play, reason: `${lead} ${play.step}단계부터 시작해요` };
+  }
+  // 함께할 영역이 따로 없으면 좋아하는 놀이 종류부터
+  for (const area of prefs.likes) {
+    const play = atStartStep(ok, area, result);
+    if (play) return { play, reason: `좋아하는 ${AREA_LABEL[area]} 놀이로 시작해요` };
   }
   const play = easiest(ok);
   return play ? { play, reason: "월령에 맞는 놀이로 시작해요" } : null;
@@ -52,16 +76,13 @@ export function nextRecommendation(
   months: number,
   logs: PlayLog[],
   plays = PLAYS,
+  prefs: ChildPrefs = NO_PREFS,
 ): Pick | null {
   const ok = eligible(months, plays);
   const sorted = [...logs].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const last = sorted.at(-1);
   const lastPlay = last && plays.find((p) => p.id === last.playId);
-  if (!last || !lastPlay) {
-    if (result) return firstRecommendation(result, months, plays);
-    const play = easiest(ok);
-    return play ? { play, reason: "월령에 맞는 놀이로 시작해요" } : null;
-  }
+  if (!last || !lastPlay) return firstRecommendation(result, months, plays, prefs);
 
   const sameSeries = ok.filter((p) => p.series === lastPlay.series);
   const otherInArea = ok.filter((p) => p.area === lastPlay.area && p.series !== lastPlay.series);
@@ -86,7 +107,7 @@ export function nextRecommendation(
   const stuck = recent.length === BALANCE_WINDOW && recent.every((a) => a === chosen.play.area);
   if (stuck) {
     const count = (a: Area) => sorted.filter((l) => plays.find((p) => p.id === l.playId)?.area === a).length;
-    const order = [...(result?.focus ?? [])];
+    const order = [...areaPriority(result, prefs), ...prefs.likes];
     const areas = [...new Set(ok.map((p) => p.area))]
       .filter((a) => a !== chosen.play.area)
       .sort((a, b) => count(a) - count(b) || (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));

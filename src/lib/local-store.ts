@@ -2,7 +2,7 @@
 // 저장소: 화면은 브라우저 캐시(localStorage)를 바로 읽고, 저장할 때마다 Supabase에도 함께 저장.
 // 로그인하면 syncFromServer()로 서버의 내 데이터를 캐시에 채움. 필드는 supabase/schema.sql 기준.
 import { useSyncExternalStore } from "react";
-import type { Board, PlayLog, SurveyAnswers, SurveyResult } from "@/types";
+import type { Area, Board, ChildPrefs, PlayLog, SurveyAnswers, SurveyResult } from "@/types";
 import { scoreSurvey } from "./survey";
 import { supabase } from "./supabase";
 
@@ -11,6 +11,8 @@ export type Child = {
   nickname: string;
   birthDate: string; // YYYY-MM-DD
   consentAt: string; // 보호자 동의 시각
+  likes?: Area[]; // ChildPrefs (예전 캐시에는 없을 수 있음 → childPrefs()로 읽기)
+  concernAreas?: Area[];
   createdAt: string;
 };
 
@@ -170,6 +172,26 @@ export function saveChild(c: Pick<Child, "nickname" | "birthDate">): Child {
   return row;
 }
 
+/** 아이의 관심(좋아하는 놀이·더 함께하고 싶은 영역). 없으면 빈 배열 */
+export const childPrefs = (c: Child | null | undefined): ChildPrefs => ({
+  likes: c?.likes ?? [],
+  concernAreas: c?.concernAreas ?? [],
+});
+
+/**
+ * 관심 저장 (온보딩·MY에서). 아이 행과 따로 update해서,
+ * 서버에 새 칸(likes·concern_areas)이 아직 없어도 아이 정보 저장은 실패하지 않음
+ */
+export function saveChildPrefs(childId: string, prefs: ChildPrefs) {
+  write((d) => ({ ...d, children: d.children.map((c) => (c.id === childId ? { ...c, ...prefs } : c)) }));
+  if (userId)
+    supabase
+      .from("children")
+      .update({ likes: prefs.likes, concern_areas: prefs.concernAreas })
+      .eq("id", childId)
+      .then(({ error }) => error && console.error("[noridari] 관심 저장 실패", error.message));
+}
+
 export function saveSurvey(s: Omit<Survey, "id" | "createdAt">): Survey {
   const row: Survey = { ...s, id: uid(), createdAt: now() };
   write((d) => ({ ...d, surveys: [...d.surveys, row] }));
@@ -307,7 +329,7 @@ export function seedDemo() {
   write(() => ({
     ...EMPTY,
     currentChildId: childId,
-    children: [{ id: childId, nickname: "하린", birthDate: birth.toISOString().slice(0, 10), consentAt: at(30, 9), createdAt: now() }],
+    children: [{ id: childId, nickname: "하린", birthDate: birth.toISOString().slice(0, 10), consentAt: at(30, 9), createdAt: now(), likes: ["gross"], concernAreas: ["lang"] }],
     surveys: [
       {
         id: uid(),
@@ -333,7 +355,10 @@ export function seedDemo() {
   if (!userId) return;
   const d = read();
   // 아이 행이 먼저 들어간 뒤에 나머지 저장 (외래 키)
-  push("children", { ...d.children[0], parentId: userId }).then(() => {
+  // 관심(likes·concernAreas)은 따로 저장 (서버에 새 칸이 없어도 아이 행은 들어가게)
+  const { likes, concernAreas, ...kid } = d.children[0];
+  push("children", { ...kid, parentId: userId }).then(() => {
+    saveChildPrefs(kid.id, { likes: likes ?? [], concernAreas: concernAreas ?? [] });
     d.surveys.forEach((r) => push("surveys", r));
     d.recommendations.forEach((r) => push("recommendations", r));
     d.playLogs.forEach((r) => push("play_logs", r));
