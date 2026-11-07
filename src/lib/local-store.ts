@@ -2,7 +2,7 @@
 // 임시 저장소 (브라우저 localStorage). DB 연결 전까지 화면 흐름을 이어 주는 용도.
 // DB 연결 시 이 파일의 함수만 Supabase 호출로 바꾸면 됩니다. 필드는 supabase/schema.sql 기준.
 import { useSyncExternalStore } from "react";
-import type { Answer, PlayLog, SurveyResult } from "@/types";
+import type { PlayLog, SurveyAnswers, SurveyResult } from "@/types";
 
 export type Child = {
   id: string;
@@ -15,7 +15,7 @@ export type Child = {
 export type Survey = {
   id: string;
   childId: string;
-  answers: Record<string, Answer>; // { questionId: answer }
+  answers: SurveyAnswers;
   result: SurveyResult;
   createdAt: string;
 };
@@ -36,7 +36,7 @@ type Data = {
   playLogs: PlayLog[];
 };
 
-const KEY = "noridari:v1";
+const KEY = "noridari:v2"; // v2: 설문 형식 변경(영아·유아 9문항). 이전 임시 데이터는 무시
 const EMPTY: Data = { currentChildId: null, children: [], surveys: [], recommendations: [], playLogs: [] };
 const listeners = new Set<() => void>();
 let cacheRaw: string | null | undefined;

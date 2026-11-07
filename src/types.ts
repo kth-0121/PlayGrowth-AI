@@ -16,21 +16,68 @@ export type MonthRange = [number, number];
 
 // ── 기능 1. 발달 상태 확인 설문 ──────────────────────────
 // data/questions.json
-export type Question = {
-  id: string;            // "lang-12-01"
-  area: Area;
-  months: MonthRange;    // 이 월령의 아이에게만 나오는 질문
-  text: string;          // "이름을 부르면 돌아보나요?" (일상에서 관찰 가능한 행동)
-  redFlag: boolean;      // true면 "아직 아니다" 응답 시 전문기관 상담 권유
+// 영아용·유아용 각 9문항 = 발달 5문항(영역별 1개) + 기질 4문항.
+// 발달이 느린 아이도 쓰므로 "할 수 있나요?"가 아니라 "지금 모습에 가장 가까운 단계"를 고른다.
+
+export type AgeGroup = "infant" | "preschool"; // 영아 · 유아
+export const AGE_GROUP: Record<AgeGroup, { label: string; months: MonthRange }> = {
+  infant: { label: "영아", months: [0, 35] },
+  preschool: { label: "유아", months: [36, 83] },
 };
 
-export type Answer = "often" | "sometimes" | "notYet"; // 자주 그렇다 · 가끔 그렇다 · 아직 아니다
-export const ANSWER_SCORE: Record<Answer, number> = { often: 2, sometimes: 1, notYet: 0 };
+// 발달 문항: 0 아직이에요 · 1 ① · 2 ② · 3 ③
+export type Level = 0 | 1 | 2 | 3;
 
+export type DevQuestion = {
+  id: string;                       // "infant-lang"
+  group: AgeGroup;
+  area: Area;
+  levels: [string, string, string]; // ①②③ 쉬운 모습 → 발전한 모습 (일상에서 관찰 가능한 행동)
+  notYet: string;                   // '아직이에요' 선택지 문구
+  consultIfNotYet: boolean;         // true면 '아직이에요' 응답 시 전문기관 상담 권유
+};
+
+// 기질 문항: 놀이를 고르지 않고 놀이 진행 방식(팁)만 바꾼다
+export type TempItem = "explore" | "cautious" | "initiative" | "recovery"; // 탐색 · 신중 · 주도 · 회복
+export type Frequency = "often" | "sometimes" | "rarely"; // 자주 그래요 · 가끔 그래요 · 거의 아니에요
+export const FREQUENCY_SCORE: Record<Frequency, number> = { often: 2, sometimes: 1, rarely: 0 };
+
+export type TempQuestion = {
+  id: string;            // "infant-explore"
+  group: AgeGroup;
+  item: TempItem;
+  text: string;
+};
+
+// 화면에서는 '기질' 대신 '우리 아이 놀이 스타일'로 표시
+export type PlayStyle = "explorer" | "careful" | "leader"; // 탐색형 · 신중형 · 주도형
+
+export type QuestionSet = {
+  dev: DevQuestion[];
+  temp: TempQuestion[];
+  styles: Record<PlayStyle, { label: string; tip: string }>;
+  lowRecoveryTip: string; // 회복 '거의 아니에요'일 때 추가 팁
+};
+
+export type SurveyAnswers = {
+  group: AgeGroup;       // 월령 기본값. 부모가 "더 쉬운 문항으로 보기"로 영아용을 고를 수 있음
+  dev: Record<Area, Level>;
+  temp: Record<TempItem, Frequency>;
+};
+
+// 결과 규칙
+// - focus: 가장 낮은 단계인 영역들 (모두 ③이면 빈 배열)
+// - startStep: 아직이에요·① → 1단계, ② → 2단계, ③ → 3단계 놀이부터
+// - style: 탐색·신중·주도 중 점수가 가장 높은 것. 동점이면 신중형 (부담이 가장 적음)
+// - suggestConsult: consultIfNotYet 영역에서 '아직이에요', 또는 '아직이에요'가 2개 영역 이상
 export type SurveyResult = {
-  scores: Record<Area, number>; // 영역별 평균 0~2
-  focus: Area[];                // 지원이 더 필요해 보이는 영역 (점수 낮은 순)
-  suggestConsult: boolean;      // 상담 권유 문구 표시 여부
+  group: AgeGroup;
+  levels: Record<Area, Level>;
+  focus: Area[];
+  startStep: Record<Area, 1 | 2 | 3>;
+  style: PlayStyle;
+  lowRecovery: boolean;  // 회복 '거의 아니에요'
+  suggestConsult: boolean;
 };
 
 // ── 기능 2. 맞춤 놀이 추천 ───────────────────────────────
