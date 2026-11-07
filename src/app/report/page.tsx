@@ -14,12 +14,19 @@ import { childLogs, currentChild, useLocalData } from "@/lib/local-store";
 import { getPlay } from "@/lib/recommend";
 import { AREA_ORDER } from "@/lib/survey";
 
+const PERIODS = [
+  { days: 7, label: "1주" },
+  { days: 14, label: "2주" },
+  { days: 30, label: "한 달" },
+];
+
 // 상담용 요약 리포트. 정리 문장은 /api/report (로컬 AI, 꺼져 있으면 규칙 문장)
 export default function ReportPage() {
   const data = useLocalData();
   const [shared, setShared] = useState(false);
   const [text, setText] = useState<ReportText | null>(null);
   const [loading, setLoading] = useState(false);
+  const [period, setPeriod] = useState<number>(14);
 
   async function makeText(logs: PlayLog[]) {
     setLoading(true);
@@ -35,12 +42,51 @@ export default function ReportPage() {
 
   if (!data) return <main className={`flex-1 ${TAB_SAFE}`} />;
   const child = currentChild(data);
-  const logs = child ? childLogs(data, child.id) : [];
-  if (!child || logs.length === 0) {
+  const allLogs = child ? childLogs(data, child.id) : [];
+  if (!child || allLogs.length === 0) {
     return (
       <main className={`flex flex-1 flex-col gap-6 px-5 ${TAB_SAFE}`}>
         <PageHeader back />
         <EmptyState text="기록이 쌓이면 상담 때 보여줄 리포트를 만들 수 있어요." action="기록 보러 가기" href="/logs" />
+      </main>
+    );
+  }
+
+  const since = new Date().getTime() - period * 86_400_000;
+  const logs = allLogs.filter((l) => new Date(l.createdAt).getTime() >= since);
+
+  const periodPicker = (
+    <div role="radiogroup" aria-label="리포트 기간" className="mt-5 grid grid-cols-3 gap-2">
+      {PERIODS.map((p) => {
+        const on = period === p.days;
+        return (
+          <button
+            key={p.days}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => {
+              setPeriod(p.days);
+              setText(null);
+            }}
+            className={`pressable min-h-11 rounded-[12px] text-[14px] font-semibold ${
+              on ? "bg-ink text-white" : "border border-line bg-card text-sub"
+            }`}
+          >
+            {p.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (logs.length === 0) {
+    return (
+      <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
+        <PageHeader back title="상담용 리포트" />
+        <H1 className="mt-2">{`${callName(child.nickname)} 놀이 기록`}</H1>
+        {periodPicker}
+        <p className="mt-6 text-[13.5px] font-medium text-sub">이 기간에는 기록이 없어요. 기간을 늘려 보세요.</p>
       </main>
     );
   }
@@ -65,6 +111,7 @@ export default function ReportPage() {
       <p className="mt-1.5 text-[13.5px] font-medium text-sub">
         놀이 {logs.length}번의 기록을 모았어요. 해석과 평가는 전문가의 몫이에요.
       </p>
+      {periodPicker}
 
       <Card className="mt-6">
         <h2 className="text-[13px] font-semibold text-sub">영역별 놀이 횟수</h2>
