@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Done, Reaction } from "@/types";
 import { Choice, MissingStep, Notice, PageTitle, PrimaryButton, PrimaryLink } from "@/components/ui";
-import { currentChild, savePlayLog, useLocalData } from "@/lib/local-store";
+import { currentChild, latestSurvey, savePlayLog, saveRecommendation, useLocalData } from "@/lib/local-store";
+import { nextRecommendation } from "@/lib/recommend";
+import { ageInMonths } from "@/lib/age";
 
 const DONE: { key: Done; label: string }[] = [
   { key: "done", label: "완료" },
@@ -25,6 +27,7 @@ export default function LogForm({ playId, playTitle }: { playId: string; playTit
   const [memo, setMemo] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [nextId, setNextId] = useState<string | null>(null);
 
   if (!data) return <p className="text-muted">불러오는 중…</p>;
   const child = currentChild(data);
@@ -39,7 +42,14 @@ export default function LogForm({ playId, playTitle }: { playId: string; playTit
     e.preventDefault();
     if (!child || !done || !reaction) return;
     // TODO(DB 연결): 사진을 Storage에 올리고 photoPath 저장
-    savePlayLog({ childId: child.id, playId, done, reaction, memo: memo.trim() || null, photoPath: null });
+    const log = savePlayLog({ childId: child.id, playId, done, reaction, memo: memo.trim() || null, photoPath: null });
+    // 방금 기록까지 반영해 다음 놀이 추천
+    const logs = [...data!.playLogs.filter((l) => l.childId === child.id), log];
+    const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs);
+    if (next) {
+      saveRecommendation({ childId: child.id, playId: next.play.id, reason: next.reason });
+      setNextId(next.play.id);
+    }
     setSaved(true);
   }
 
@@ -55,6 +65,7 @@ export default function LogForm({ playId, playTitle }: { playId: string; playTit
         </p>
         {/* 기록 모아보기(/logs)는 기록·리포트 담당 화면 */}
         <div className="flex w-full flex-col gap-3">
+          {nextId && <PrimaryLink href={`/play/${nextId}`}>다음 놀이 보기</PrimaryLink>}
           <PrimaryLink href="/logs">기록 모아보기</PrimaryLink>
           <Link href={`/play/${playId}`} className="text-sm text-muted underline">
             놀이 카드로 돌아가기
