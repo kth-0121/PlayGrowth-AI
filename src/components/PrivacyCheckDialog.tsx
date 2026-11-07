@@ -20,7 +20,11 @@ export function PrivacyCheckDialog({
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
+    if (open && !d.open) {
+      d.showModal();
+      // 기본 선택은 안전한 쪽(다시 확인할게요)
+      d.querySelector<HTMLButtonElement>("[data-safe]")?.focus();
+    }
     if (!open && d.open) d.close();
   }, [open]);
 
@@ -52,7 +56,7 @@ export function PrivacyCheckDialog({
           <Button variant="secondary" onClick={onConfirm}>
             그대로 올리기
           </Button>
-          <Button autoFocus onClick={onEdit}>
+          <Button data-safe onClick={onEdit}>
             다시 확인할게요
           </Button>
         </div>
