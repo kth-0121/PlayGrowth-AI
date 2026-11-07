@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase cli
+supabase/.temp/
+
+# 학습된 모델 파일 (용량 큼)
+ai/*.gguf
