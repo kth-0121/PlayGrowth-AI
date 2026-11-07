@@ -1,23 +1,35 @@
-// 팀 공통 계약. 바꿀 땐 PR로 4명 모두 리뷰.
-export type Domain = "gross_motor" | "fine_motor" | "cognition" | "language" | "social" | "self_care";
+// 팀 공통 계약. 바꿀 땐 PR로 팀원 전원 확인.
+
+// 발달 체크 5영역 (체크 문항 기준)
+export type DevArea = "gross" | "fine" | "lang" | "cog" | "soc";
+
+// 누리과정 5영역 (부모가 고르는 "걱정되는 영역", 놀이 카드 연계 표시)
+export type Nuri = "신체운동·건강" | "의사소통" | "사회관계" | "예술경험" | "자연탐구";
+
+// 기질 4문항
+export type TempItem = "explore" | "cautious" | "initiative" | "recovery";
+export type Temperament = "탐색형" | "신중형" | "주도형";
+
+// 1 거의 아니에요 · 2 가끔 그래요 · 3 자주 그래요
+export type Score = 1 | 2 | 3;
+export type CheckAnswers = Record<DevArea | TempItem, Score>;
 
 export type Play = {
-  id: string;            // "lang-001"
+  id: string;              // "lang-001"
   title: string;
-  domain: Domain;
-  ageMonths: [number, number]; // 대상 월령 [최소, 최대]
-  minutes: number;
+  area: DevArea;
+  nuri: Nuri;
+  ageYears: [number, number]; // 만 나이 [최소, 최대], MVP는 3~5
+  level: "쉬움" | "보통";
   materials: string[];
-  steps: string[];
-  successSigns: string[]; // "잘 되고 있다"는 신호
-  reviewedBy: string | null; // 전문가 감수자, 미감수면 null (미감수 놀이는 추천 금지)
+  steps: { text: string; minutes: number }[];
+  questions: string[];     // 부모가 건네는 발문 예시
+  points: string[];        // 발달 포인트
+  next: string;            // 다음 단계 도전
+  reviewedBy: string | null; // 감수자, null이면 추천 금지
 };
 
-export type Reaction = "low" | "mid" | "high";
+// 놀이 카드 상태: AI(규칙) 추천 → 센터 확인 → 부모에게 발송
+export type CardStatus = "draft" | "confirmed" | "sent";
 
-// AI 추천 API 응답: playIds는 반드시 plays.json에 있는 id만
-export type Recommendation = {
-  playIds: string[];
-  explanation: string;
-  redFlag: boolean; // true면 전문가 상담 안내를 먼저 표시
-};
+export type Reaction = "done" | "difficult" | "loved"; // 해봤어요 · 어려웠어요 · 반응 좋았어요
