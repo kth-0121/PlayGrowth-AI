@@ -9,7 +9,7 @@ const TABS: { href: string; label: string; icon: IconType; match: (p: string) =>
   { href: "/", label: "홈", icon: House, match: (p) => p === "/" },
   { href: "/play", label: "놀이", icon: BlocksIcon, match: (p) => p.startsWith("/play") },
   { href: "/logs", label: "기록", icon: NotebookPen, match: (p) => p.startsWith("/logs") },
-  { href: "/community", label: "이야기", icon: MessageSquare, match: (p) => p.startsWith("/community") },
+  { href: "/community", label: "커뮤니티", icon: MessageSquare, match: (p) => p.startsWith("/community") },
   { href: "/my", label: "MY", icon: User, match: (p) => p.startsWith("/my") },
 ];
 

@@ -2,17 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { Check, ImagePlus, X } from "lucide-react";
 import type { Area, Done, Reaction } from "@/types";
-import { Button } from "@/components/Button";
-import { AreaChip, DONE_LABEL, REACTION_LABEL } from "@/components/Chip";
+import { Button, TextButton } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { AreaChip, DONE_LABEL, REACTION_LABEL, TimeChip } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { callName } from "@/lib/copy";
 import { ageInMonths } from "@/lib/age";
 import { childLogs, currentChild, latestSurvey, savePlayLog, saveRecommendation, useLocalData } from "@/lib/local-store";
-import { nextRecommendation } from "@/lib/recommend";
+import { nextRecommendation, type Pick } from "@/lib/recommend";
 import { uploadPhoto } from "@/lib/supabase";
 
 const DONE: Done[] = ["done", "partial", "notDone"];
@@ -26,6 +27,7 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
   const [memo, setMemo] = useState("");
   const [photos, setPhotos] = useState<{ url: string; file: File }[]>([]);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState<{ next: Pick | null } | null>(null);
 
   if (!data) return <main className="flex-1" />;
   const child = currentChild(data);
@@ -60,7 +62,55 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
     const logs = [...childLogs(data!, child.id), log];
     const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs);
     if (next) saveRecommendation({ childId: child.id, playId: next.play.id, reason: next.reason });
-    router.push("/logs");
+    // 저장 후 바로 다음 놀이로 이어갈 수 있게 완료 화면을 보여줌
+    setSaved({ next });
+    setBusy(false);
+  }
+
+  if (saved) {
+    const next = saved.next;
+    return (
+      <main className="flex flex-1 flex-col px-5 pb-[calc(32px+env(safe-area-inset-bottom))]">
+        <PageHeader title="기록 완료" />
+        <div className="mt-6 flex flex-col items-center gap-3 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-sage-light text-sage-dark">
+            <Icon icon={Check} size={28} />
+          </span>
+          <H1>오늘 놀이 잘 마쳤어요</H1>
+          <p className="text-[13.5px] font-medium leading-[1.55] text-sub">
+            {callName(child.nickname)}가 더 놀고 싶어 하면 하나 더 해 봐요.
+            <br />
+            오늘은 여기까지 해도 충분해요.
+          </p>
+        </div>
+
+        {next && (
+          <Card className="mt-7">
+            <p className="text-[12.5px] font-semibold text-sub">{next.play.id === playId ? "다시 해 볼 놀이" : "다음 놀이"}</p>
+            <div className="mt-2 flex gap-1.5">
+              <AreaChip area={next.play.area} />
+              <TimeChip minutes={next.play.minutes} />
+            </div>
+            <h2 className="mt-2 text-[17px] font-bold leading-[1.35]">{next.play.title}</h2>
+            <p className="mt-1 text-[13px] font-medium leading-[1.5] text-sub">{next.reason}</p>
+          </Card>
+        )}
+
+        <div className="mt-auto flex flex-col gap-2 pt-8">
+          {next && (
+            <Button full onClick={() => router.push(`/play/${next.play.id}`)}>
+              {next.play.id === playId ? "한 번 더 하기" : "다른 놀이 하기"}
+            </Button>
+          )}
+          <Button full variant="secondary" onClick={() => router.push("/")}>
+            오늘은 여기까지
+          </Button>
+          <TextButton onClick={() => router.push("/logs")} className="self-center">
+            기록 보러 가기
+          </TextButton>
+        </div>
+      </main>
+    );
   }
 
   return (

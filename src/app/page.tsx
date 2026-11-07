@@ -62,6 +62,7 @@ export default function Home() {
   const play: Play | null =
     (rec && getPlay(rec.playId)) || (survey ? (firstRecommendation(survey.result, months)?.play ?? null) : null);
   const logs = childLogs(data, child.id);
+  const doneToday = logs.filter((l) => ymd(new Date(l.createdAt)) === ymd(today)).length;
 
   function otherPlay() {
     if (!child || !play) return;
@@ -92,7 +93,7 @@ export default function Home() {
         <WaitCard data={data} today={today} logCount={logs.length} />
 
         {play ? (
-          <TodayPlay play={play} onStart={startPlay} onOther={otherPlay} />
+          <TodayPlay play={play} doneToday={doneToday} onStart={startPlay} onOther={otherPlay} />
         ) : (
           <EmptyState
             text={`${callName(child.nickname)}에게 맞는 놀이를 고르려면 평소 모습에 대한 질문에 답해 주세요.`}
@@ -156,12 +157,22 @@ function WaitCard({
 }
 
 /** 오늘의 놀이 (홈에서 가장 큰 요소) */
-function TodayPlay({ play, onStart, onOther }: { play: Play; onStart: () => void; onOther: () => void }) {
+function TodayPlay({
+  play,
+  doneToday,
+  onStart,
+  onOther,
+}: {
+  play: Play;
+  doneToday: number; // 오늘 남긴 기록 수. 1 이상이면 '하나 더' 흐름으로
+  onStart: () => void;
+  onOther: () => void;
+}) {
   return (
     <Card large className="overflow-hidden">
       <Illustration height={128} seed={play.id.length}>
         <span className="absolute right-3 top-3 rounded-[6px] bg-card px-2 py-1 text-[11px] font-bold text-sage-dark">
-          오늘의 놀이
+          {doneToday > 0 ? `오늘 ${doneToday}개 했어요 ✓` : "오늘의 놀이"}
         </span>
       </Illustration>
       <div className="px-[18px] pb-[18px] pt-4">
@@ -171,9 +182,14 @@ function TodayPlay({ play, onStart, onOther }: { play: Play; onStart: () => void
         </div>
         <h2 className="mt-2.5 text-[18px] font-bold leading-[1.3] tracking-[-0.03em]">{play.title}</h2>
         <p className="mt-1 text-[13.5px] font-medium leading-[1.55] text-sub">준비물 · {play.materials.join(", ")}</p>
+        {doneToday > 0 && (
+          <p className="mt-2 text-[13px] font-medium leading-[1.5] text-sage-dark">
+            오늘 놀이 잘 마쳤어요. 아이가 더 놀고 싶어 하면 하나 더 해 봐요.
+          </p>
+        )}
         <div className="mt-4 flex gap-2">
           <Button onClick={onStart} className="flex-1">
-            놀이 시작
+            {doneToday > 0 ? "하나 더 놀기" : "놀이 시작"}
           </Button>
           <Button variant="secondary" onClick={onOther} className="w-[92px] shrink-0 px-0">
             다른 놀이

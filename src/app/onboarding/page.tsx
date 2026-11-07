@@ -7,6 +7,7 @@ import { Illustration } from "@/components/Illustration";
 import { H1 } from "@/components/PageHeader";
 import { ageInMonths, formatMonths } from "@/lib/age";
 import { callName } from "@/lib/copy";
+import { ymd } from "@/lib/dates";
 import { saveChild } from "@/lib/local-store";
 
 const INPUT =
@@ -19,7 +20,14 @@ export default function OnboardingPage() {
   const [birthDate, setBirthDate] = useState("");
   const [consent, setConsent] = useState(false);
 
-  const months = birthDate ? ageInMonths(birthDate) : null;
+  // 고를 수 있는 생년월일: 만 0~6세(0~83개월) → 84개월 전 다음 날 ~ 오늘
+  const today = new Date();
+  const oldest = new Date(today.getFullYear(), today.getMonth() - 84, today.getDate() + 1);
+  const birthMin = ymd(oldest);
+  const birthMax = ymd(today);
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(birthDate);
+
+  const months = validDate ? ageInMonths(birthDate) : null;
   const monthsOk = months !== null && months >= 0 && months <= 83;
   const name = nickname.trim();
   const formOk = name !== "" && monthsOk && consent;
@@ -76,7 +84,19 @@ export default function OnboardingPage() {
             </label>
             <label className="flex flex-col gap-2">
               <span className="text-[13px] font-semibold text-sub">생년월일</span>
-              <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={INPUT} />
+              {/* min·max가 있어야 연도 칸이 4자리로 제한됨 (없으면 브라우저가 6자리까지 받음) */}
+              <input
+                type="date"
+                value={birthDate}
+                min={birthMin}
+                max={birthMax}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className={INPUT}
+                suppressHydrationWarning
+              />
+              {birthDate !== "" && !validDate && (
+                <span className="text-[13px] font-medium text-danger">연도는 4자리로 입력해 주세요 (예: 2024)</span>
+              )}
               {months !== null && (
                 <span className={`text-[13px] font-medium ${monthsOk ? "text-sage-dark" : "text-danger"}`}>
                   {monthsOk ? `지금 ${formatMonths(months)}이에요` : "만 0~6세(0~83개월) 아이만 이용할 수 있어요"}
