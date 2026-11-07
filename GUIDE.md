@@ -7,13 +7,11 @@
 
 ## 0. 처음 한 번만 하는 준비 (30분)
 
-태훈이 옆에서 같이 설치해 줍니다.
-
 1. **설치할 것**
    - [Node.js](https://nodejs.org) (LTS 버전, 그냥 "다음"만 누르면 됨)
    - [Git](https://git-scm.com)
    - [VS Code](https://code.visualstudio.com)
-   - Claude Code (태훈이 설치해 줌)
+   - Claude Code: 위 3개를 설치한 뒤 터미널에 `npm install -g @anthropic-ai/claude-code` 붙여넣기 → `claude` 입력 후 로그인
 2. **GitHub 초대 수락**: 메일함이나 GitHub 알림에서 "Accept invitation" 누르기
 3. **코드 받기**: 바탕화면에서 터미널을 열고 아래를 한 줄씩 붙여넣기
    ```
