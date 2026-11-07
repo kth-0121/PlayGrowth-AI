@@ -55,7 +55,7 @@ export default function CommunityPage() {
 
       <ListGroup className="mt-4">
         {posts.map((p) => (
-          <ListRow key={p.id}>
+          <ListRow key={p.id} href={`/community/post?id=${p.id}`}>
             <p className="text-[15px] font-bold leading-[1.4]">{p.title}</p>
             {isUnverifiedClaim(p.title + p.body) && (
               <span className="mt-1.5 inline-flex rounded-[7px] bg-warm px-2 py-1 text-[11.5px] font-bold leading-none text-sub">
