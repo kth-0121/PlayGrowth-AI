@@ -2,7 +2,7 @@
 // 소품을 그려 두고 놀이마다 조합합니다. 실제 그림이 생기면 SCENES의 항목을 <image>로 바꾸면 됩니다.
 import type { Play } from "@/types";
 
-const C = {
+export const C = {
   ink: "var(--color-ink)",
   card: "var(--color-card)",
   chip: "var(--color-neutral-chip)",
@@ -20,10 +20,10 @@ const C = {
   b3: "var(--color-illu-s3)",
   b4: "var(--color-illu-s4)",
 };
-const S = { stroke: C.ink, strokeWidth: 2.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+export const S = { stroke: C.ink, strokeWidth: 2.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
 // ── 소품 (원점 기준, 대략 ±40) ─────────────────────────────
-const P: Record<string, () => React.ReactNode> = {
+export const P: Record<string, () => React.ReactNode> = {
   lid: () => (
     <g {...S}>
       <ellipse cx="0" cy="6" rx="40" ry="8" fill={C.card} />

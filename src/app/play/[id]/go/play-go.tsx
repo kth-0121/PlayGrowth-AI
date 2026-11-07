@@ -11,6 +11,7 @@ import { Icon } from "@/components/Icon";
 import { PageHeader } from "@/components/PageHeader";
 import { MaterialArt } from "@/components/PlayArt";
 import { ProgressBar } from "@/components/ProgressBar";
+import { StepArt } from "@/components/StepArt";
 import { PageSkeleton } from "@/components/Skeleton";
 import { Timer } from "@/components/Timer";
 import { currentChild, latestSurvey, saveProgress, useLocalData } from "@/lib/local-store";
@@ -50,15 +51,16 @@ export default function PlayGo({ play }: { play: Play }) {
       {step === 0 ? (
         <Prep play={play} checked={checked} onToggle={toggle} />
       ) : (
-        <section className="mt-8" aria-live="polite">
+        <section className="mt-7" aria-live="polite">
           <p className="text-[13px] font-extrabold text-sage">{String(step).padStart(2, "0")}</p>
           <h1 className="mt-2 text-balance text-[23px] font-extrabold leading-[1.45] tracking-[-0.035em]">
             {play.steps[step - 1]}
           </h1>
+          <StepArt key={step} play={play} step={step} height={210} className="anim-up mt-5 rounded-[22px]" />
           <button
             type="button"
             onClick={() => setTipsOpen(true)}
-            className="pressable mt-6 inline-flex min-h-11 items-center gap-1.5 rounded-[12px] bg-sage-light px-3.5 text-[14px] font-semibold text-sage-dark"
+            className="pressable mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-[12px] bg-sage-light px-3.5 text-[14px] font-semibold text-sage-dark"
           >
             <Icon icon={Lightbulb} size={18} />
             아이가 어려워하면
