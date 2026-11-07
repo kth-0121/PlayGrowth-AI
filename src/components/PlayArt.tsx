@@ -364,9 +364,129 @@ const P: Record<string, () => React.ReactNode> = {
       <path d="M-16 4 v22 M16 4 v22" />
     </g>
   ),
+  // ── 준비물 전용 ──
+  phone: () => (
+    <g {...S}>
+      <rect x="-20" y="-34" width="40" height="68" rx="8" fill={C.ink} />
+      <rect x="-15" y="-26" width="30" height="48" rx="3" fill={C.g1} stroke="none" />
+      <circle cx="6" cy="-14" r="5" fill={C.b2} stroke="none" />
+      <path d="M-15 16 l10 -12 l8 7 l6 -5 l6 10" fill="none" stroke={C.ink} strokeWidth="2" />
+    </g>
+  ),
+  goods: () => (
+    <g {...S}>
+      <rect x="-34" y="-8" width="34" height="34" rx="3" fill={C.b4} />
+      <path d="M-34 4 h34" />
+      <circle cx="14" cy="10" r="14" fill={C.g3} />
+      <path d="M14 -4 q4 -8 10 -8" fill="none" />
+      <rect x="-18" y="-30" width="26" height="22" rx="3" fill={C.b1} />
+    </g>
+  ),
+  money: () => (
+    <g {...S}>
+      <rect x="-34" y="-14" width="60" height="32" rx="4" fill={C.g1} transform="rotate(-8)" />
+      <rect x="-26" y="-20" width="60" height="32" rx="4" fill={C.card} />
+      <circle cx="4" cy="-4" r="8" fill={C.g2} />
+      <text x="4" y="0" textAnchor="middle" fontSize="10" fontWeight="800" fill={C.ink} stroke="none">
+        원
+      </text>
+    </g>
+  ),
+  tapeRoll: () => (
+    <g {...S}>
+      <circle r="24" fill={C.b3} />
+      <circle r="11" fill={C.card} />
+      <path d="M20 12 L40 26 L34 34 L14 20" fill={C.b3} />
+    </g>
+  ),
+  glue: () => (
+    <g {...S}>
+      <rect x="-12" y="-14" width="24" height="44" rx="5" fill={C.g2} />
+      <rect x="-8" y="-30" width="16" height="16" rx="3" fill={C.card} />
+      <path d="M-12 4 h24" />
+    </g>
+  ),
+  sheet: () => (
+    <g {...S}>
+      <rect x="-30" y="-34" width="60" height="68" rx="3" fill={C.card} />
+      <path d="M-30 -24 h60" stroke={C.g3} />
+      <path d="M-18 -6 q10 -12 20 0 t18 0" fill="none" stroke={C.b2} strokeWidth="3" />
+    </g>
+  ),
+  blanket: () => (
+    <g {...S}>
+      <path d="M-40 -18 Q-20 -28 0 -18 Q20 -8 40 -18 V18 Q20 28 0 18 Q-20 8 -40 18 Z" fill={C.g1} />
+      <path d="M-40 0 Q-20 -10 0 0 Q20 10 40 0" fill="none" stroke={C.g3} />
+    </g>
+  ),
+  plateEmpty: () => (
+    <g {...S}>
+      <ellipse cx="0" cy="4" rx="40" ry="14" fill={C.card} />
+      <ellipse cx="0" cy="2" rx="24" ry="7" fill="none" stroke={C.line} />
+    </g>
+  ),
+  cups: () => (
+    <g {...S}>
+      {[-20, 0, 20].map((x, i) => (
+        <path key={x} d={`M${x - 12} 26 L${x + 12} 26 L${x + 9} -6 L${x - 9} -6 Z`} fill={i === 1 ? C.b3 : C.card} transform={i === 1 ? "translate(0 -26)" : undefined} />
+      ))}
+    </g>
+  ),
 };
 
 type Put = [prop: string, x: number, y: number, scale?: number];
+
+// 준비물 문구 → 그림 (앞에서부터 처음 맞는 것)
+const MATERIAL_ART: [RegExp, string, number?][] = [
+  [/딸랑이|소리 나는/, "rattle", 1.2],
+  [/말랑한 공/, "ball", 1.8],
+  [/없음.*얼굴/, "face", 1.3],
+  [/동요/, "notes", 1.8],
+  [/냄비/, "lid", 1.1],
+  [/빨래집게/, "pin", 2],
+  [/종이컵 4/, "cups", 1.2],
+  [/종이컵/, "cup", 1.2],
+  [/휴대폰/, "phone"],
+  [/그림책이나 사진/, "cards", 0.95],
+  [/그림책/, "book"],
+  [/생활용품|바구니/, "basket", 1.05],
+  [/빨래/, "laundry", 1.2],
+  [/양말/, "sock", 1.4],
+  [/인형/, "bear", 1.1],
+  [/상자/, "goods"],
+  [/돈/, "money"],
+  [/테이프/, "tapeRoll", 1.1],
+  [/의자/, "chair", 1.2],
+  [/소파|탁자/, "sofa", 0.62],
+  [/이불/, "blanket", 1.05],
+  [/쿠션|베개/, "cushion", 1.4],
+  [/공이나 블록|블록/, "blocks", 1.6],
+  [/공/, "ball", 1.8],
+  [/풀/, "glue", 1.1],
+  [/색종이|전단지|두꺼운 종이/, "paper", 1.15],
+  [/스케치북|이면지|큰 종이/, "sheet", 1.1],
+  [/크레파스|색연필/, "crayon", 1.5],
+  [/가위/, "scissors", 1.4],
+  [/손수건/, "cloth", 1.2],
+  [/플라스틱 통/, "box", 1.2],
+  [/수건/, "towel", 0.95],
+  [/떡뻥|과자/, "plate", 1.05],
+  [/접시/, "plateEmpty", 1.05],
+  [/숟가락|컵/, "spoon", 1.2],
+  [/장난감/, "bear", 1.1],
+];
+
+/** 준비물 한 가지 그림 (정사각형) */
+export function MaterialArt({ material, className = "" }: { material: string; className?: string }) {
+  const hit = MATERIAL_ART.find(([re]) => re.test(material));
+  const [, name, scale = 1] = hit ?? [/./, "blocks", 1.6];
+  return (
+    <svg viewBox="-50 -50 100 100" className={`block h-full w-full ${className}`} role="img" aria-label={`${material} 그림`}>
+      <ellipse cx="0" cy="40" rx="36" ry="5" fill={C.g1} />
+      <g transform={`scale(${scale})`}>{P[name]?.()}</g>
+    </svg>
+  );
+}
 
 // 놀이 id → 장면 (첫 번째 소품이 썸네일 중심)
 const SCENES: Record<string, Put[]> = {

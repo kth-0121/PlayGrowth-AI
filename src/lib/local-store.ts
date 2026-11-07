@@ -72,7 +72,6 @@ export type Data = {
   posts: Post[];
   comments: Comment[];
   savedPlays: string[];
-  checklist: Record<string, number[]>; // playId → 체크한 준비물 index
   progress: Record<string, number>; // playId → 진행 모드 단계
   surveyDraft: SurveyDraft | null;
   settings: Settings;
@@ -89,7 +88,6 @@ export const EMPTY: Data = {
   posts: [],
   comments: [],
   savedPlays: [],
-  checklist: {},
   progress: {},
   surveyDraft: null,
   settings: { notify: false, notifyTime: "19:30" },
@@ -156,13 +154,6 @@ export function toggleSaved(playId: string) {
     ...d,
     savedPlays: d.savedPlays.includes(playId) ? d.savedPlays.filter((p) => p !== playId) : [playId, ...d.savedPlays],
   }));
-}
-export function toggleChecklist(playId: string, index: number) {
-  write((d) => {
-    const cur = d.checklist[playId] ?? [];
-    const next = cur.includes(index) ? cur.filter((i) => i !== index) : [...cur, index];
-    return { ...d, checklist: { ...d.checklist, [playId]: next } };
-  });
 }
 export function saveProgress(playId: string, step: number | null) {
   write((d) => {
