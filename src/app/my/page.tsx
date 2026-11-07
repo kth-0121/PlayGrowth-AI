@@ -25,7 +25,6 @@ import {
   switchChild,
   useLocalData,
 } from "@/lib/local-store";
-import { seedDemo } from "@/mocks/demo";
 
 const INPUT =
   "h-[52px] w-full rounded-[12px] border border-line bg-card px-4 text-[15px] font-medium outline-none placeholder:text-mute focus:border-sage focus:ring-[0.5px] focus:ring-sage";
@@ -151,16 +150,6 @@ export default function MyPage() {
         </ListRow>
         <ListRow onClick={() => toast("문의 창구는 준비 중이에요")} chevron>
           <p className="text-[15px] font-semibold">문의하기</p>
-        </ListRow>
-        <ListRow
-          onClick={() => {
-            seedDemo();
-            toast("예시 데이터로 바꿨어요");
-          }}
-          chevron
-        >
-          <p className="text-[15px] font-semibold">예시 데이터 넣기</p>
-          <p className="mt-0.5 text-[12.5px] font-medium text-sub">가짜 아이 &ldquo;하린&rdquo;(28개월)과 기록 12개로 바꿔요</p>
         </ListRow>
       </ListGroup>
 

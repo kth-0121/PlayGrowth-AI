@@ -1,10 +1,7 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import { ButtonLink } from "./Button";
-import { Icon } from "./Icon";
 import { PlayArt } from "./PlayArt";
-import { seedDemo } from "@/mocks/demo";
 
 /** 비로그인·첫 방문 화면: 할 일은 "아이 정보 입력" 하나. 위에서부터 쌓고 남는 공간은 여백으로 둠 */
 export function Landing() {
@@ -30,15 +27,6 @@ export function Landing() {
           </ButtonLink>
         </div>
       </section>
-
-      <button
-        type="button"
-        onClick={seedDemo}
-        className="pressable mt-4 inline-flex min-h-11 items-center gap-0.5 self-center px-2 text-[13.5px] font-semibold text-sub"
-      >
-        예시 데이터로 먼저 둘러보기
-        <Icon icon={ChevronRight} size={14} />
-      </button>
     </main>
   );
 }

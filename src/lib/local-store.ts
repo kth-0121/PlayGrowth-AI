@@ -56,6 +56,8 @@ export type SurveyDraft = {
   dev: Partial<Record<Area, Level>>;
   temp: Partial<Record<TempItem, Frequency>>;
   index: number;
+  choice?: Record<string, number>; // 문항 키 → 고른 보기 순서 (0 자주 · 1 가끔 · 2 아직/거의)
+  easy?: Record<string, boolean>; // 문항 키 → 더 쉬운 질문으로 보는 중
 };
 
 export type Settings = { notify: boolean; notifyTime: string };
@@ -213,11 +215,6 @@ export function saveComment(c: Omit<Comment, "id" | "createdAt">): Comment {
 /** 동의 철회 = 이 기기의 아이 정보와 기록 전부 삭제 */
 export function clearAll() {
   write(() => EMPTY);
-}
-
-/** 시연 데이터 등 전체 교체 */
-export function replaceAll(data: Data) {
-  write(() => data);
 }
 
 /** 클라이언트에서만 값이 생김. 서버 렌더·하이드레이션 중엔 null(→ Skeleton). */
