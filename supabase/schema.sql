@@ -74,6 +74,7 @@ create table comments (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references posts on delete cascade,
   author_id uuid not null references profiles on delete cascade,
+  nickname text not null default '익명',
   body text not null,
   created_at timestamptz default now()
 );
@@ -102,6 +103,10 @@ $$;
 create function is_admin() returns boolean language sql stable security definer as $$
   select coalesce((select is_admin from profiles where id = auth.uid()), false)
 $$;
+
+-- 프로필: 정해진 칸만 본인이 수정 (is_admin은 대시보드에서만 지정)
+revoke insert, update, delete on profiles from anon, authenticated;
+grant update (nickname, center_name, wait_start, consult_date) on profiles to authenticated;
 
 -- 아이 데이터: 보호자 본인만
 create policy own_profile on profiles for all using (id = auth.uid()) with check (id = auth.uid());

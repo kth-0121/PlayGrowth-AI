@@ -46,6 +46,7 @@ export type Post = {
   playId: string | null;
   comments: number;
   createdAt: string;
+  authorId?: string; // 내 글이면 삭제 버튼 표시. 예시 글은 없음
 };
 
 type Data = {
@@ -103,6 +104,7 @@ const camel = <T,>(row: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(row).map(([k, v]) => [k.replace(/_([a-z])/g, (_, c) => c.toUpperCase()), v])) as T;
 
 let userId: string | null = null; // AuthGate가 로그인 상태에 맞춰 설정
+let admin = false; // 운영자 여부 (profiles.is_admin, 대시보드에서만 지정)
 
 // ponytail: 실패하면 콘솔에만 남기고 재시도 안 함. 오프라인 사용이 필요해지면 대기열 추가
 function push(table: string, row: object): PromiseLike<void> {
@@ -127,17 +129,18 @@ export async function syncFromServer(uid: string) {
     get<Survey>("surveys"),
     get<Recommendation>("recommendations"),
     get<PlayLog>("play_logs"),
-    get<{ id: string; board: Post["board"]; title: string; body: string; playId: string | null; createdAt: string; nickname: string; comments: { count: number }[] }>(
+    get<{ id: string; authorId: string; board: Post["board"]; title: string; body: string; playId: string | null; createdAt: string; nickname: string; comments: { count: number }[] }>(
       "posts",
-      "id, board, nickname, title, body, play_id, created_at, comments(count)",
+      "id, author_id, board, nickname, title, body, play_id, created_at, comments(count)",
     ),
-    supabase.from("profiles").select("center_name, wait_start, consult_date").eq("id", uid).single(),
+    supabase.from("profiles").select("center_name, wait_start, consult_date, is_admin").eq("id", uid).single(),
   ]);
   const kids = children.map(({ parentId: _, ...c }) => c); // eslint-disable-line @typescript-eslint/no-unused-vars
   const posts: Post[] = rawPosts
-    .map((p) => ({ id: p.id, board: p.board, title: p.title, body: p.body, playId: p.playId, createdAt: p.createdAt, nickname: p.nickname, comments: p.comments[0]?.count ?? 0 }))
+    .map((p) => ({ id: p.id, authorId: p.authorId, board: p.board, title: p.title, body: p.body, playId: p.playId, createdAt: p.createdAt, nickname: p.nickname, comments: p.comments[0]?.count ?? 0 }))
     .reverse(); // 최신 글 먼저
   const pr = profile.data;
+  admin = !!pr?.is_admin;
   const center = pr?.center_name ? { name: pr.center_name, waitStart: pr.wait_start ?? "", consultDate: pr.consult_date ?? "" } : null;
   write(() => ({ currentChildId: kids.at(-1)?.id ?? null, children: kids, surveys, recommendations, playLogs, posts, center }));
 }
@@ -145,6 +148,7 @@ export async function syncFromServer(uid: string) {
 /** 로그아웃 시 이 기기의 캐시 비우기 */
 export function clearLocal() {
   userId = null;
+  admin = false;
   write(() => EMPTY);
 }
 
@@ -190,10 +194,32 @@ export function saveCenter(c: CenterWait | null) {
 }
 
 export function savePost(p: Omit<Post, "id" | "createdAt" | "comments">): Post {
-  const row: Post = { ...p, id: uid(), comments: 0, createdAt: now() };
+  const row: Post = { ...p, id: uid(), comments: 0, createdAt: now(), authorId: userId ?? undefined };
   write((d) => ({ ...d, posts: [row, ...d.posts] }));
   if (userId) push("posts", { id: row.id, authorId: userId, nickname: row.nickname, board: row.board, playId: row.playId, title: row.title, body: row.body });
   return row;
+}
+
+/** 지금 로그인한 보호자 id (내 글 구분용) */
+export const myUserId = () => userId;
+/** 운영자면 모든 글·댓글을 지울 수 있음 (서버 RLS도 is_admin으로 허용) */
+export const isAdmin = () => admin;
+/** 이 글·댓글을 지울 수 있는지: 내가 쓴 것이거나 운영자 */
+export const canDelete = (authorId?: string) => !!userId && (admin || authorId === userId);
+
+/** 내 글 삭제 (운영자는 모든 글). 권한은 서버 RLS가 판단 */
+export function deletePost(id: string) {
+  write((d) => ({ ...d, posts: d.posts.filter((p) => p.id !== id) }));
+  supabase
+    .from("posts")
+    .delete()
+    .eq("id", id)
+    .then(({ error }) => error && console.error("[noridari] 글 삭제 실패", error.message));
+}
+
+/** 댓글 수 갱신 (댓글을 쓰거나 지웠을 때, comments.ts에서 호출) */
+export function bumpComments(postId: string, delta: number) {
+  write((d) => ({ ...d, posts: d.posts.map((p) => (p.id === postId ? { ...p, comments: Math.max(0, p.comments + delta) } : p)) }));
 }
 
 /** 아이 정보·기록·사진 전부 삭제 (서버 포함). 커뮤니티 글은 남김 */
