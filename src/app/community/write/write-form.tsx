@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { BOARD_LABEL, type Board } from "@/types";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { PageHeader } from "@/components/PageHeader";
+import { PrivacyCheckDialog } from "@/components/PrivacyCheckDialog";
+import { findIdentifyingTerms } from "@/lib/privacy";
 import { currentChild, savePost, useLocalData } from "@/lib/local-store";
 import { getPlay } from "@/lib/recommend";
 
@@ -26,12 +28,25 @@ export default function WriteForm() {
   const [title, setTitle] = useState(play ? `${play.title} 후기` : "");
   const [body, setBody] = useState("");
   const [photo, setPhoto] = useState(false);
+  const [checkTerms, setCheckTerms] = useState<string[]>([]);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const ok = title.trim() !== "" && body.trim() !== "";
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!ok) return;
+    // 실명·기관명으로 보이는 표현이 있으면 올리기 전에 한 번 더 확인
+    const terms = findIdentifyingTerms(`${title} ${body}`);
+    if (terms.length > 0) {
+      setCheckTerms(terms);
+      return;
+    }
+    publish();
+  }
+
+  function publish() {
+    setCheckTerms([]);
     const child = data ? currentChild(data) : null;
     savePost({
       board,
@@ -74,6 +89,7 @@ export default function WriteForm() {
         className={`${INPUT} mt-5 h-[52px]`}
       />
       <textarea
+        ref={bodyRef}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="놀이하면서 있었던 일, 궁금한 점을 나눠 주세요"
@@ -103,6 +119,15 @@ export default function WriteForm() {
           글 올리기
         </Button>
       </div>
+
+      <PrivacyCheckDialog
+        terms={checkTerms}
+        onEdit={() => {
+          setCheckTerms([]);
+          bodyRef.current?.focus();
+        }}
+        onConfirm={publish}
+      />
     </form>
   );
 }

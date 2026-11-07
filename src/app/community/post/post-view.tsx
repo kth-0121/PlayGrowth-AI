@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BOARD_LABEL } from "@/types";
 import { Button, TextButton } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { H1, PageHeader } from "@/components/PageHeader";
+import { PrivacyCheckDialog } from "@/components/PrivacyCheckDialog";
+import { findIdentifyingTerms } from "@/lib/privacy";
 import { TAB_SAFE } from "@/components/TabBar";
 import {
   FEEDBACK_LABEL,
@@ -35,6 +37,8 @@ export default function PostView() {
   const data = useLocalData();
   const [draft, setDraft] = useState("");
   const [reported, setReported] = useState(false);
+  const [checkTerms, setCheckTerms] = useState<string[]>([]);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
 
   if (!data) return <main className={`flex-1 ${TAB_SAFE}`} />;
   const post = findPost(data, id);
@@ -54,6 +58,18 @@ export default function PostView() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!draft.trim()) return;
+    // 실명·기관명으로 보이는 표현이 있으면 올리기 전에 한 번 더 확인
+    const terms = findIdentifyingTerms(draft);
+    if (terms.length > 0) {
+      setCheckTerms(terms);
+      return;
+    }
+    publish();
+  }
+
+  function publish() {
+    setCheckTerms([]);
     const body = draft.trim();
     if (!body || !post) return;
     saveComment({ postId: post.id, nickname: child ? `${child.nickname}네` : "익명", body });
@@ -151,6 +167,7 @@ export default function PostView() {
           댓글 쓰기
         </label>
         <textarea
+          ref={commentRef}
           id="comment"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -164,6 +181,15 @@ export default function PostView() {
           댓글 올리기
         </Button>
       </form>
+
+      <PrivacyCheckDialog
+        terms={checkTerms}
+        onEdit={() => {
+          setCheckTerms([]);
+          commentRef.current?.focus();
+        }}
+        onConfirm={publish}
+      />
     </main>
   );
 }
