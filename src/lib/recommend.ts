@@ -95,3 +95,16 @@ export function nextRecommendation(
   }
   return chosen;
 }
+
+/** 월령에 맞고 추천 가능한 놀이 (놀이 목록 화면) */
+export function playsForMonths(months: number, plays = PLAYS): Play[] {
+  return eligible(months, plays);
+}
+
+/** 홈 '다른 놀이': 같은 월령에서 지금 놀이 다음 순서의 놀이 (한 바퀴 돌면 처음으로) */
+export function nextPlay(currentId: string, months: number, plays = PLAYS): Play | null {
+  const list = eligible(months, plays);
+  if (list.length === 0) return null;
+  const i = list.findIndex((p) => p.id === currentId);
+  return list[(i + 1) % list.length];
+}

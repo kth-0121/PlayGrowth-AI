@@ -2,18 +2,24 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AREA_LABEL, type Level } from "@/types";
-import { Box, MissingStep, Notice, PageTitle, PrimaryButton } from "@/components/ui";
+import { AREA_LABEL, type Area, type Level } from "@/types";
+import { Button } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
+import { H1, PageHeader } from "@/components/PageHeader";
+import { ProgressBar } from "@/components/ProgressBar";
 import { ageInMonths } from "@/lib/age";
+import { callName, josa } from "@/lib/copy";
 import { currentChild, latestSurvey, saveRecommendation, useLocalData } from "@/lib/local-store";
 import { firstRecommendation } from "@/lib/recommend";
 import { AREA_ORDER, QUESTION_SET } from "@/lib/survey";
 
-// 단계 0~3 → 부모가 이해하기 쉬운 말 (전문 용어·점수 숫자 노출 안 함)
-function levelText(level: Level) {
-  if (level === 3) return { text: "잘하고 있어요", cls: "bg-calm-soft text-calm" };
-  if (level === 2) return { text: "조금씩 자라는 중", cls: "bg-brand-soft text-brand" };
-  return { text: "함께 놀이해 봐요", cls: "bg-brand-soft text-brand font-bold" };
+// 단계·점수 대신 짧은 문장으로 (진단처럼 보이지 않게)
+function sentence(area: Area, level: Level) {
+  const name = AREA_LABEL[area];
+  if (level === 3) return `${name}: 요즘 많이 보여요`;
+  if (level === 2) return `${name}: 조금씩 보여요`;
+  return `${name}: 놀이로 자주 만나 보면 좋아요`;
 }
 
 export default function SurveyResultPage() {
@@ -21,79 +27,79 @@ export default function SurveyResultPage() {
   const data = useLocalData();
   const [noPlay, setNoPlay] = useState(false);
 
-  if (!data) return <p className="text-muted">불러오는 중…</p>;
+  if (!data) return <main className="flex-1" />;
   const child = currentChild(data);
   const survey = child && latestSurvey(data, child.id);
-  if (!child || !survey)
-    return <MissingStep text="설문을 먼저 해 주세요." href={child ? "/survey" : "/child"} label="설문하러 가기" />;
+  if (!child || !survey) {
+    return (
+      <main className="flex flex-1 flex-col gap-6 px-5 pb-10">
+        <PageHeader back />
+        <EmptyState
+          text="질문에 답하면 영역별로 정리해서 보여 드려요."
+          action="발달 상태 확인"
+          href={child ? "/survey" : "/onboarding"}
+        />
+      </main>
+    );
+  }
 
   const { levels, focus, style, lowRecovery, suggestConsult } = survey.result;
   const styleInfo = QUESTION_SET.styles[style];
+  const name = callName(child.nickname);
+  const first = firstRecommendation(survey.result, ageInMonths(child.birthDate));
 
   function goPlay() {
-    if (!child || !survey) return;
-    const rec = firstRecommendation(survey.result, ageInMonths(child.birthDate));
-    if (!rec) return setNoPlay(true);
-    saveRecommendation({ childId: child.id, playId: rec.play.id, reason: rec.reason });
-    router.push(`/play/${rec.play.id}`);
+    if (!child || !first) return setNoPlay(true);
+    saveRecommendation({ childId: child.id, playId: first.play.id, reason: first.reason });
+    router.push(`/play/${first.play.id}`);
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageTitle step="2 / 4" title={`${child.nickname}의 결과`} desc="평소 모습을 바탕으로 정리했어요." />
-      <Notice>진단 결과가 아니에요. 어떤 놀이부터 하면 좋을지 고르기 위한 참고예요.</Notice>
+    <main className="flex flex-1 flex-col px-5 pb-[calc(32px+env(safe-area-inset-bottom))]">
+      <PageHeader back />
+      <H1 className="mt-2">
+        {focus.length > 0
+          ? `${josa(name, "과", "와")} 함께\n${focus.slice(0, 2).map((a) => AREA_LABEL[a]).join("·")} 놀이부터 해요`
+          : `${josa(name, "이", "가")} 좋아하는\n놀이로 이어가요`}
+      </H1>
+      <p className="mt-2 text-[13.5px] font-medium leading-[1.55] text-sub">
+        답해 주신 요즘 모습을 영역별로 정리했어요. 진단 결과가 아니에요.
+      </p>
 
-      <Box title="영역별 모습">
-        <ul className="flex flex-col gap-3">
-          {AREA_ORDER.map((a) => {
-            const lv = levelText(levels[a]);
-            return (
-              <li key={a} className="flex items-center gap-3">
-                <span className="w-14 shrink-0 text-sm font-medium">{AREA_LABEL[a]}</span>
-                <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-line">
-                  <span
-                    className="block h-full rounded-full bg-calm"
-                    style={{ width: `${Math.max(8, (levels[a] / 3) * 100)}%` }}
-                  />
-                </span>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs ${lv.cls}`}>{lv.text}</span>
-              </li>
-            );
-          })}
+      <Card className="mt-6">
+        <ul className="flex flex-col gap-4">
+          {AREA_ORDER.map((a) => (
+            <li key={a} className="flex flex-col gap-2">
+              <p className="text-[14px] font-medium">{sentence(a, levels[a])}</p>
+              <ProgressBar value={Math.max(0.06, levels[a] / 3)} label={AREA_LABEL[a]} />
+            </li>
+          ))}
         </ul>
-      </Box>
+      </Card>
 
-      <Box title="놀이로 더 도와주면 좋은 영역">
-        {focus.length > 0 ? (
-          <p className="text-sm leading-relaxed">
-            <b className="text-brand">{focus.map((a) => AREA_LABEL[a]).join(", ")}</b> 영역을 놀이로 함께 키워 봐요.
-          </p>
-        ) : (
-          <p className="text-sm">전체적으로 고르게 자라고 있어요. 좋아하는 놀이로 즐겁게 이어가 봐요.</p>
-        )}
-      </Box>
-
-      <Box title={`우리 아이 놀이 스타일 · ${styleInfo.label}`}>
-        <ul className="flex flex-col gap-1.5 text-sm leading-relaxed">
-          <li>{styleInfo.tip}</li>
-          {lowRecovery && <li>{QUESTION_SET.lowRecoveryTip}</li>}
-        </ul>
-      </Box>
+      <Card className="mt-3">
+        <p className="text-[13px] font-semibold text-sub">놀이 스타일 · {styleInfo.label}</p>
+        <p className="mt-1.5 text-[14px] font-medium leading-[1.5]">{styleInfo.tip}</p>
+        {lowRecovery && <p className="mt-1 text-[14px] font-medium leading-[1.5]">{QUESTION_SET.lowRecoveryTip}</p>}
+      </Card>
 
       {suggestConsult && (
-        <section className="rounded-2xl border-2 border-brand bg-brand-soft p-5 text-sm leading-relaxed">
-          <p className="font-bold">전문기관 상담을 받아 보시길 권해요</p>
-          <p className="mt-1">
-            일부 응답은 전문가와 한번 이야기해 보면 좋은 모습이에요. 걱정하실 일이라는 뜻은 아니에요. 가까운 발달지원센터나
+        <section className="mt-3 rounded-[18px] bg-sage-xlight px-[18px] py-4">
+          <h2 className="text-[15px] font-bold">전문가와 한번 이야기해 보세요</h2>
+          <p className="mt-1.5 text-[13.5px] font-medium leading-[1.55] text-sub">
+            일부 답변은 전문가와 함께 살펴보면 좋은 모습이에요. 걱정할 일이라는 뜻은 아니에요. 기다리는 센터나 가까운
             소아청소년과에 상담을 문의해 보세요.
           </p>
         </section>
       )}
 
-      {noPlay && <Notice tone="brand">지금 월령에 맞는 놀이를 준비하고 있어요. 조금만 기다려 주세요.</Notice>}
-      <PrimaryButton type="button" onClick={goPlay}>
-        추천 놀이 보기
-      </PrimaryButton>
-    </div>
+      {noPlay && <p className="mt-4 text-[13.5px] font-medium text-sub">지금 월령에 맞는 놀이를 준비하고 있어요.</p>}
+
+      <div className="mt-auto pt-8">
+        <Button full onClick={goPlay}>
+          첫 놀이 보기
+        </Button>
+      </div>
+    </main>
   );
 }
