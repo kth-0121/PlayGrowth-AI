@@ -56,7 +56,7 @@ export default function ReportPage() {
   const logs = allLogs.filter((l) => new Date(l.createdAt).getTime() >= since);
 
   const periodPicker = (
-    <div role="radiogroup" aria-label="리포트 기간" className="mt-5 grid grid-cols-3 gap-2">
+    <div role="radiogroup" aria-label="리포트 기간" className="mt-2 grid grid-cols-3 gap-2">
       {PERIODS.map((p) => {
         const on = period === p.days;
         return (
@@ -84,8 +84,8 @@ export default function ReportPage() {
     return (
       <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
         <PageHeader back title="상담용 리포트" />
-        <H1 className="mt-2">{`${callName(child.nickname)} 놀이 기록`}</H1>
         {periodPicker}
+        <H1 className="mt-5">{`${callName(child.nickname)} 놀이 기록`}</H1>
         <p className="mt-6 text-[13.5px] font-medium text-sub">이 기간에는 기록이 없어요. 기간을 늘려 보세요.</p>
       </main>
     );
@@ -99,7 +99,7 @@ export default function ReportPage() {
   const titles = (r: "enjoyed" | "hard") => [
     ...new Set(logs.filter((l) => l.reaction === r).map((l) => getPlay(l.playId)?.title ?? "")),
   ];
-  const memos = logs.filter((l) => l.memo).slice(0, 3);
+  const memos = logs.filter((l) => l.memo).slice(0, 5);
   const from = new Date(logs[logs.length - 1].createdAt);
   const to = new Date(logs[0].createdAt);
   const fmt = (d: Date) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
@@ -107,11 +107,11 @@ export default function ReportPage() {
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
       <PageHeader back title="상담용 리포트" />
-      <H1 className="mt-2">{`${callName(child.nickname)} 놀이 기록\n${fmt(from)} ~ ${fmt(to)}`}</H1>
+      {periodPicker}
+      <H1 className="mt-5">{`${callName(child.nickname)} 놀이 기록\n${fmt(from)} ~ ${fmt(to)}`}</H1>
       <p className="mt-1.5 text-[13.5px] font-medium text-sub">
         놀이 {logs.length}번의 기록을 모았어요. 해석과 평가는 전문가의 몫이에요.
       </p>
-      {periodPicker}
 
       <Card className="mt-6">
         <h2 className="text-[13px] font-semibold text-sub">영역별 놀이 횟수</h2>
@@ -136,6 +136,21 @@ export default function ReportPage() {
       </Card>
 
       <Card className="mt-3">
+        <h2 className="text-[13px] font-semibold text-sub">부모 관찰 메모</h2>
+        {memos.length > 0 ? (
+          <ul className="mt-2 flex flex-col gap-2">
+            {memos.map((l) => (
+              <li key={l.id} className="text-[13.5px] font-medium leading-[1.55] text-memo">
+                “{l.memo}”
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1.5 text-[13.5px] font-medium text-sub">이 기간에 남긴 메모가 없어요.</p>
+        )}
+      </Card>
+
+      <Card className="mt-3">
         <h2 className="text-[13px] font-semibold text-sub">상담 때 보여줄 정리</h2>
         {text ? (
           <div className="mt-2 flex flex-col gap-2 text-[14px] font-medium leading-[1.55]">
@@ -153,22 +168,14 @@ export default function ReportPage() {
         )}
       </Card>
 
-      {memos.length > 0 && (
-        <Card className="mt-3">
-          <h2 className="text-[13px] font-semibold text-sub">보호자 관찰 메모</h2>
-          <ul className="mt-2 flex flex-col gap-2">
-            {memos.map((l) => (
-              <li key={l.id} className="text-[13.5px] font-medium leading-[1.55] text-memo">
-                “{l.memo}”
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
       <label className="mt-3 flex min-h-[56px] items-center justify-between gap-3 rounded-[18px] bg-card px-[18px] py-3">
         <span>
-          <span className="block text-[15px] font-semibold">센터에 공유하기</span>
+          <span className="block text-[15px] font-semibold">
+            센터에 공유하기
+            <span className={`ml-1.5 text-[12px] font-bold ${shared ? "text-sage-dark" : "text-sub"}`}>
+              {shared ? "켜짐" : "꺼짐"}
+            </span>
+          </span>
           <span className="block text-[12px] font-medium text-sub">켜면 공유 링크가 생기고, 끄면 바로 사라져요</span>
         </span>
         <input
