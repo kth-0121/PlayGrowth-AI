@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import type { Done, Play } from "@/types";
+import { AREA_LABEL, type Area, type Done, type Play } from "@/types";
 import { Button, TextButton } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { AreaChip, TimeChip } from "@/components/Chip";
@@ -18,6 +19,7 @@ import { AREA_PLAY_NAME, callName, josa } from "@/lib/copy";
 import { daysBetween, longDate, thisWeek, WEEKDAY, ymd } from "@/lib/dates";
 import {
   childLogs,
+  childPrefs,
   currentChild,
   latestRecommendation,
   latestSurvey,
@@ -25,11 +27,13 @@ import {
   seedDemo,
   useLocalData,
 } from "@/lib/local-store";
-import { firstRecommendation, getPlay, nextPlay } from "@/lib/recommend";
+import { areaPriority, areasForMonths, firstRecommendation, getPlay, nextPlay, pickInArea } from "@/lib/recommend";
+import { AREA_ORDER } from "@/lib/survey";
 
 export default function Home() {
   const router = useRouter();
   const data = useLocalData();
+  const [picking, setPicking] = useState(false); // '다른 놀이' 영역 고르기 시트
 
   if (!data) return <main className={`flex-1 px-5 ${TAB_SAFE}`} />;
 
@@ -59,14 +63,26 @@ export default function Home() {
   const months = ageInMonths(child.birthDate);
   const survey = latestSurvey(data, child.id);
   const rec = latestRecommendation(data, child.id);
+  const prefs = childPrefs(child);
+  const hasPrefs = prefs.concernAreas.length > 0 || prefs.likes.length > 0;
+  // 설문을 안 했어도 부모가 관심을 골랐으면 그걸로 시작
   const play: Play | null =
-    (rec && getPlay(rec.playId)) || (survey ? (firstRecommendation(survey.result, months)?.play ?? null) : null);
+    (rec && getPlay(rec.playId)) ||
+    (survey || hasPrefs ? (firstRecommendation(survey?.result ?? null, months, undefined, prefs)?.play ?? null) : null);
   const logs = childLogs(data, child.id);
+  const doneToday = logs.filter((l) => ymd(new Date(l.createdAt)) === ymd(today)).length;
 
-  function otherPlay() {
+  // 영역 고르기 시트에서 고른 결과. area가 null이면 '추천대로'(지금처럼 다음 놀이)
+  function otherPlay(area: Area | null) {
+    setPicking(false);
     if (!child || !play) return;
-    const p = nextPlay(play.id, months);
-    if (p) saveRecommendation({ childId: child.id, playId: p.id, reason: "다른 놀이로 바꿨어요" });
+    if (area === null) {
+      const p = nextPlay(play.id, months);
+      if (p) saveRecommendation({ childId: child.id, playId: p.id, reason: "다른 놀이로 바꿨어요" });
+      return;
+    }
+    const pick = pickInArea(area, survey?.result ?? null, months, play.id, logs);
+    if (pick) saveRecommendation({ childId: child.id, playId: pick.play.id, reason: pick.reason });
   }
 
   function startPlay() {
@@ -92,7 +108,7 @@ export default function Home() {
         <WaitCard data={data} today={today} logCount={logs.length} />
 
         {play ? (
-          <TodayPlay play={play} onStart={startPlay} onOther={otherPlay} />
+          <TodayPlay play={play} doneToday={doneToday} onStart={startPlay} onOther={() => setPicking(true)} />
         ) : (
           <EmptyState
             text={`${callName(child.nickname)}에게 맞는 놀이를 고르려면 평소 모습에 대한 질문에 답해 주세요.`}
@@ -103,7 +119,99 @@ export default function Home() {
 
         <WeekCard logs={logs} today={today} />
       </div>
+
+      {picking && play && (
+        <AreaSheet
+          current={play.area}
+          focus={areaPriority(survey?.result ?? null, prefs)}
+          likes={prefs.likes}
+          available={areasForMonths(months)}
+          onPick={otherPlay}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </main>
+  );
+}
+
+/** '다른 놀이' → 어떤 영역으로 바꿀지 고르는 바텀시트 */
+function AreaSheet({
+  current,
+  focus,
+  likes,
+  available,
+  onPick,
+  onClose,
+}: {
+  current: Area;
+  focus: Area[]; // 설문 focus + 부모가 고른 영역 → '추천' 표시
+  likes: Area[]; // 좋아하는 놀이 → '좋아해요' 표시
+  available: Set<Area>; // 이 월령에 놀이가 있는 영역
+  onPick: (area: Area | null) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center">
+      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-ink/40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="area-sheet-title"
+        className="relative w-full max-w-[480px] rounded-t-[22px] bg-card px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-3"
+      >
+        <span className="mx-auto block h-1 w-10 rounded-full bg-line" aria-hidden />
+        <h2 id="area-sheet-title" className="mt-4 text-[18px] font-bold">
+          어떤 놀이를 해 볼까요?
+        </h2>
+        <p className="mt-1 text-[13px] font-medium text-sub">고른 영역에서 지금 단계에 맞는 놀이로 바꿔요.</p>
+
+        <Button full onClick={() => onPick(null)} className="mt-4">
+          추천대로 바꾸기
+        </Button>
+
+        <ul className="mt-3 grid grid-cols-2 gap-2">
+          {AREA_ORDER.map((a) => {
+            const ok = available.has(a);
+            return (
+              <li key={a}>
+                <button
+                  type="button"
+                  disabled={!ok}
+                  onClick={() => onPick(a)}
+                  className="pressable flex min-h-[56px] w-full flex-col items-start justify-center rounded-[12px] border border-line bg-card px-3.5 py-2 text-left disabled:opacity-40"
+                >
+                  <span className="flex items-center gap-1.5 text-[14.5px] font-bold">
+                    {AREA_PLAY_NAME[a]}
+                    {focus.includes(a) && (
+                      <span className="rounded-[6px] bg-sage-light px-1.5 py-0.5 text-[11px] font-bold text-sage-dark">
+                        추천
+                      </span>
+                    )}
+                    {likes.includes(a) && (
+                      <span className="rounded-[6px] bg-warm px-1.5 py-0.5 text-[11px] font-bold text-sub">좋아해요</span>
+                    )}
+                  </span>
+                  <span className="text-[12px] font-medium text-sub">
+                    {AREA_LABEL[a]}
+                    {a === current ? " · 지금 영역" : ""}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        <TextButton onClick={onClose} className="mt-3 w-full">
+          닫기
+        </TextButton>
+      </div>
+    </div>
   );
 }
 
@@ -156,12 +264,22 @@ function WaitCard({
 }
 
 /** 오늘의 놀이 (홈에서 가장 큰 요소) */
-function TodayPlay({ play, onStart, onOther }: { play: Play; onStart: () => void; onOther: () => void }) {
+function TodayPlay({
+  play,
+  doneToday,
+  onStart,
+  onOther,
+}: {
+  play: Play;
+  doneToday: number; // 오늘 남긴 기록 수. 1 이상이면 '하나 더' 흐름으로
+  onStart: () => void;
+  onOther: () => void;
+}) {
   return (
     <Card large className="overflow-hidden">
       <Illustration height={128} seed={play.id.length}>
         <span className="absolute right-3 top-3 rounded-[6px] bg-card px-2 py-1 text-[11px] font-bold text-sage-dark">
-          오늘의 놀이
+          {doneToday > 0 ? `오늘 ${doneToday}개 했어요 ✓` : "오늘의 놀이"}
         </span>
       </Illustration>
       <div className="px-[18px] pb-[18px] pt-4">
@@ -171,9 +289,14 @@ function TodayPlay({ play, onStart, onOther }: { play: Play; onStart: () => void
         </div>
         <h2 className="mt-2.5 text-[18px] font-bold leading-[1.3] tracking-[-0.03em]">{play.title}</h2>
         <p className="mt-1 text-[13.5px] font-medium leading-[1.55] text-sub">준비물 · {play.materials.join(", ")}</p>
+        {doneToday > 0 && (
+          <p className="mt-2 text-[13px] font-medium leading-[1.5] text-sage-dark">
+            오늘 놀이 잘 마쳤어요. 아이가 더 놀고 싶어 하면 하나 더 해 봐요.
+          </p>
+        )}
         <div className="mt-4 flex gap-2">
           <Button onClick={onStart} className="flex-1">
-            놀이 시작
+            {doneToday > 0 ? "하나 더 놀기" : "놀이 시작"}
           </Button>
           <Button variant="secondary" onClick={onOther} className="w-[92px] shrink-0 px-0">
             다른 놀이

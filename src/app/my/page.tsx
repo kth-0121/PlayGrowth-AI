@@ -7,8 +7,19 @@ import { ListGroup, ListRow } from "@/components/ListRow";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { TAB_SAFE } from "@/components/TabBar";
 import { ageInMonths, formatMonths } from "@/lib/age";
-import { childLogs, clearAll, currentChild, saveCenter, seedDemo, useLocalData } from "@/lib/local-store";
+import { AREA_PLAY_NAME } from "@/lib/copy";
+import { childLogs, childPrefs, clearAll, currentChild, saveCenter, seedDemo, useLocalData } from "@/lib/local-store";
 import { supabase } from "@/lib/supabase";
+import { AREA_LABEL, type ChildPrefs } from "@/types";
+
+/** "좋아해요: 몸 놀이 · 함께하고 싶어요: 언어" */
+function prefsSummary(p: ChildPrefs) {
+  const parts = [
+    p.likes.length ? `좋아해요: ${p.likes.map((a) => AREA_PLAY_NAME[a]).join(", ")}` : "",
+    p.concernAreas.length ? `함께하고 싶어요: ${p.concernAreas.map((a) => AREA_LABEL[a]).join(", ")}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "아직 고르지 않았어요";
+}
 
 const INPUT =
   "h-[52px] w-full rounded-[12px] border border-line bg-card px-4 text-[15px] font-medium outline-none placeholder:text-mute focus:border-sage focus:ring-[0.5px] focus:ring-sage";
@@ -108,6 +119,12 @@ export default function MyPage() {
         <ListRow href="/onboarding" chevron>
           <p className="text-[15px] font-semibold">{child ? "아이 정보 다시 입력" : "아이 정보 입력"}</p>
         </ListRow>
+        {child && (
+          <ListRow href="/my/prefs" chevron>
+            <p className="text-[15px] font-semibold">관심 놀이·영역 바꾸기</p>
+            <p className="mt-0.5 text-[12.5px] font-medium text-sub">{prefsSummary(childPrefs(child))}</p>
+          </ListRow>
+        )}
         <ListRow href="/survey" chevron>
           <p className="text-[15px] font-semibold">발달 상태 다시 확인</p>
         </ListRow>

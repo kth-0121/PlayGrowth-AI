@@ -31,7 +31,7 @@ export default function CommunityPage() {
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_FAB_SAFE}`}>
       <PageHeader logo />
-      <H1 className="mt-2">이야기</H1>
+      <H1 className="mt-2">커뮤니티</H1>
       <p className="mt-1 text-[13.5px] font-medium text-sub">같은 시간을 보내는 부모들의 {BOARD_LABEL[board]}</p>
 
       <div role="tablist" className="mt-4 flex gap-5 border-b border-line">

@@ -10,7 +10,7 @@ const TABS: { href: string; label: string; char: Char; match: (p: string) => boo
   { href: "/", label: "홈", char: SproutChar, match: (p) => p === "/" },
   { href: "/play", label: "놀이", char: BlockBearChar, match: (p) => p.startsWith("/play") },
   { href: "/logs", label: "기록", char: PencilSquirrelChar, match: (p) => p.startsWith("/logs") },
-  { href: "/community", label: "이야기", char: BubbleDuckChar, match: (p) => p.startsWith("/community") },
+  { href: "/community", label: "커뮤니티", char: BubbleDuckChar, match: (p) => p.startsWith("/community") },
   { href: "/my", label: "MY", char: KittenChar, match: (p) => p.startsWith("/my") },
 ];
 

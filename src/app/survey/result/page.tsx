@@ -10,7 +10,7 @@ import { H1, PageHeader } from "@/components/PageHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { ageInMonths } from "@/lib/age";
 import { callName, josa } from "@/lib/copy";
-import { currentChild, latestSurvey, saveRecommendation, useLocalData } from "@/lib/local-store";
+import { childPrefs, currentChild, latestSurvey, saveRecommendation, useLocalData } from "@/lib/local-store";
 import { firstRecommendation } from "@/lib/recommend";
 import { AREA_ORDER, QUESTION_SET } from "@/lib/survey";
 
@@ -46,7 +46,7 @@ export default function SurveyResultPage() {
   const { levels, focus, style, lowRecovery, suggestConsult } = survey.result;
   const styleInfo = QUESTION_SET.styles[style];
   const name = callName(child.nickname);
-  const first = firstRecommendation(survey.result, ageInMonths(child.birthDate));
+  const first = firstRecommendation(survey.result, ageInMonths(child.birthDate), undefined, childPrefs(child));
 
   function goPlay() {
     if (!child || !first) return setNoPlay(true);
