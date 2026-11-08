@@ -6,7 +6,7 @@
 
 > ⚠️ 놀이다리는 의료 서비스가 아니며 발달지연이나 발달장애를 진단하지 않습니다. 놀이 추천은 전문 평가와 치료를 대신하지 않습니다. 걱정되는 징후가 있으면 전문기관 상담을 안내합니다. 아동 정보와 사진은 보호자 동의를 받은 경우에만 수집·보관하며, 보호자가 언제든 삭제할 수 있습니다.
 
-📄 전체 기획: `놀이다리_서비스기획서.docx` (기획 담당)
+📄 전체 기획: [서비스 기획서](docs/service-plan.md) · [시연 시나리오](docs/demo-scenario.md) · [기획 남은 일](docs/planning-todo.md) · [기능 개선 아이디어](docs/feature-ideas.md) (기획 담당)
 
 ## 왜 필요한가
 ```
@@ -59,26 +59,48 @@
 - 놀이는 `data/plays.json`에 있는 것만 추천 (AI가 놀이를 새로 지어내지 않음)
 
 ## 기술
-Next.js (App Router, TypeScript, Tailwind) · Supabase (인증·DB·사진 저장) · Ollama (로컬 AI)
+Next.js (App Router, TypeScript, Tailwind) · Supabase (로그인·DB·사진 저장) · Vercel (배포) · Ollama (로컬 AI)
+
+- **배포 주소**: https://play-growth-ai.vercel.app (휴대폰에서 "홈 화면에 추가"하면 앱처럼 열림)
+- **로그인**: 홈을 뺀 모든 화면은 로그인 필요. 이메일 인증 없이 바로 가입됨 (시연용 설정)
+- **운영자**: `profiles.is_admin = true`인 계정은 모든 글·댓글을 지울 수 있음. 지정은 Supabase SQL Editor에서만 (`supabase/migration-2026-11-08-admin-comments.sql` 맨 아래 참고)
 
 ```bash
 npm install
-cp .env.example .env.local   # Supabase 키 입력
+cp .env.example .env.local   # 아래 값 입력
 npm run dev                  # http://localhost:3000
-
-# 로컬 AI (선택)
-ollama pull qwen2.5:7b
+npx tsx src/lib/recommend.test.ts   # 추천 규칙 점검
 ```
+
+`.env.local` (공개 키라 팀 내 공유 가능, `service_role` 키는 절대 넣지 않음)
+```
+NEXT_PUBLIC_SUPABASE_URL=https://burqeqgxjtrcrowaiejg.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_gRscCw3sw5W58zYrh9C8bg_5zSODWcM
+NEXT_PUBLIC_ALLOW_UNREVIEWED=true    # 감수 전 놀이도 추천 (시연용)
+OLLAMA_URL=http://localhost:11434    # 로컬 AI (선택)
+OLLAMA_MODEL=noridari
+```
+Vercel에도 위 `NEXT_PUBLIC_` 3개가 설정되어 있음. 바꾸면 다시 배포해야 반영됨.
+
+**DB를 새로 만들 때**: Supabase SQL Editor에서 `supabase/schema.sql` → `supabase/storage.sql` 순서로 실행.
+이미 만든 DB에 바뀐 점만 적용할 때는 `supabase/migration-*.sql`을 날짜 순서로 실행.
+
+**로컬 AI 모델**: `ai/train_colab.ipynb`를 위에서부터 차례로 실행해 Colab에서 학습 → 받은 `noridari.Q4_K_M.gguf`를 `ai/`에 두고 `ollama create noridari -f ai/Modelfile`. 모델이 없거나 꺼져 있으면 리포트는 규칙 문장으로 나옴 (배포판은 항상 규칙 문장).
 
 ## 구조
 ```
-src/app/              화면
+src/app/              화면 (community/post: 글 상세·댓글, api/report: 리포트 문장)
+src/components/       공통 UI
+src/lib/              recommend(추천 규칙) · survey(설문 채점) · report(리포트) ·
+                      local-store(캐시·서버 동기화) · comments(댓글) · supabase(DB·사진)
 src/types.ts          팀 공통 타입              ← 계약
-data/questions.json   월령별 설문 문항          ← 계약
+data/questions.json   설문 문항                 ← 계약
 data/plays.json       놀이 라이브러리 (단계별)   ← 계약
-supabase/schema.sql   DB 스키마·접근 권한        ← 계약
+supabase/             DB 스키마·보안 규칙·변경 기록 ← 계약
+ai/                   로컬 AI 학습 (데이터 생성기, Colab 노트북, Modelfile)
+docs/                 기획서 · 시장조사 · 시연 시나리오 · 기획 남은 일
 ```
-계약 파일 4개를 바꿀 때는 PR을 올리고 팀원 전원의 확인을 받습니다. 문항과 놀이 내용은 기획 담당이 채웁니다.
+계약 파일을 바꿀 때는 통합 담당에게 먼저 알립니다. 문항과 놀이 내용은 기획 담당이 채웁니다.
 
 ## 역할
 | 담당 | 역할 |

@@ -4,7 +4,10 @@
 create table profiles (
   id uuid primary key references auth.users on delete cascade,
   nickname text not null,             -- 커뮤니티 표시 이름
-  is_admin boolean not null default false
+  is_admin boolean not null default false,
+  center_name text,                   -- 대기 중인 센터 (선택)
+  wait_start date,                    -- 대기 시작일
+  consult_date date                   -- 첫 상담 예정일
 );
 
 create table children (
@@ -13,6 +16,8 @@ create table children (
   nickname text not null,             -- 애칭, 실명 저장 안 함
   birth_date date not null,
   consent_at timestamptz not null,    -- 보호자 동의 시각
+  likes text[] not null default '{}',         -- 좋아하는 놀이 종류 (영역 코드, ChildPrefs.likes)
+  concern_areas text[] not null default '{}', -- 더 함께 놀아 주고 싶은 영역 (ChildPrefs.concernAreas)
   created_at timestamptz default now()
 );
 
@@ -39,7 +44,7 @@ create table play_logs (
   done text not null check (done in ('done','partial','notDone')),
   reaction text not null check (reaction in ('enjoyed','neutral','hard')),
   memo text,
-  photo_path text,                    -- Storage 경로, 보호자가 언제든 삭제
+  photo_paths text[] not null default '{}', -- Storage 경로 (최대 4장), 보호자가 언제든 삭제
   created_at timestamptz default now()
 );
 
@@ -56,6 +61,7 @@ create table reports (
 create table posts (
   id uuid primary key default gen_random_uuid(),
   author_id uuid not null references profiles on delete cascade,
+  nickname text not null default '익명', -- 글 쓸 때의 닉네임 (프로필은 본인만 볼 수 있어서 글에 함께 저장)
   board text not null check (board in ('review','center','worry')),
   play_id text,                       -- 놀이 카드에서 바로 쓴 후기면 연결
   title text not null,
@@ -70,6 +76,7 @@ create table comments (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references posts on delete cascade,
   author_id uuid not null references profiles on delete cascade,
+  nickname text not null default '익명',
   body text not null,
   created_at timestamptz default now()
 );
@@ -99,6 +106,10 @@ create function is_admin() returns boolean language sql stable security definer 
   select coalesce((select is_admin from profiles where id = auth.uid()), false)
 $$;
 
+-- 프로필: 정해진 칸만 본인이 수정 (is_admin은 대시보드에서만 지정)
+revoke insert, update, delete on profiles from anon, authenticated;
+grant update (nickname, center_name, wait_start, consult_date) on profiles to authenticated;
+
 -- 아이 데이터: 보호자 본인만
 create policy own_profile on profiles for all using (id = auth.uid()) with check (id = auth.uid());
 create policy own_children on children for all using (parent_id = auth.uid()) with check (parent_id = auth.uid());
@@ -118,3 +129,13 @@ create policy write_comments on comments for insert with check (author_id = auth
 create policy delete_comments on comments for delete using (author_id = auth.uid() or is_admin());
 create policy write_reports on post_reports for insert with check (reporter_id = auth.uid());
 create policy read_reports on post_reports for select using (is_admin());
+
+-- 가입하면 프로필 자동 생성 (닉네임: 가입 시 metadata.nickname, 없으면 이메일 앞부분)
+create function handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into profiles (id, nickname)
+  values (new.id, coalesce(new.raw_user_meta_data->>'nickname', split_part(new.email, '@', 1)));
+  return new;
+end
+$$;
+create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();

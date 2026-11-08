@@ -11,7 +11,7 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { PageSkeleton } from "@/components/Skeleton";
 import { ageInMonths } from "@/lib/age";
 import { callName, josa } from "@/lib/copy";
-import { currentChild, latestSurvey, saveRecommendation, useLocalData } from "@/lib/local-store";
+import { childPrefs, currentChild, latestSurvey, saveRecommendation, useLocalData } from "@/lib/local-store";
 import { firstRecommendation } from "@/lib/recommend";
 import { AREA_ORDER, QUESTION_SET } from "@/lib/survey";
 
@@ -48,7 +48,7 @@ export default function SurveyResultPage() {
   const { levels, focus, style, lowRecovery, suggestConsult } = survey.result;
   const styleInfo = QUESTION_SET.styles[style];
   const name = callName(child.nickname);
-  const first = firstRecommendation(survey.result, ageInMonths(child.birthDate));
+  const first = firstRecommendation(survey.result, ageInMonths(child.birthDate), undefined, childPrefs(child));
   // 모든 영역이 같은 답이면 고르게 자라는 중으로 안내
   const even = AREA_ORDER.every((a) => levels[a] === levels.lang);
   const focusAreas = even ? [] : focus;

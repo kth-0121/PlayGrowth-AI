@@ -3,22 +3,30 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, FileText } from "lucide-react";
-import type { PlayLog } from "@/types";
+import { AREA_LABEL, type PlayLog } from "@/types";
 import { Fab, TextButton } from "@/components/Button";
 import { AreaChip, ReactionTag } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
-import { Illustration } from "@/components/Illustration";
 import { PageSkeleton } from "@/components/Skeleton";
 import { TAB_FAB_SAFE, TAB_SAFE } from "@/components/TabBar";
 import { callName } from "@/lib/copy";
 import { logTimeLabel, thisWeek, WEEKDAY, ymd } from "@/lib/dates";
+import { StoragePhoto } from "@/components/StoragePhoto";
 import { childLogs, currentChild, latestRecommendation, useLocalData } from "@/lib/local-store";
 import { getPlay } from "@/lib/recommend";
+import { AREA_ORDER } from "@/lib/survey";
+
+type View = "date" | "area";
+const VIEWS: { key: View; label: string }[] = [
+  { key: "date", label: "날짜별" },
+  { key: "area", label: "영역별" },
+];
 
 export default function LogsPage() {
   const data = useLocalData();
   const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<View>("date");
 
   if (!data) return <PageSkeleton />;
   const child = currentChild(data);
@@ -42,6 +50,10 @@ export default function LogsPage() {
     return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
   }).length;
   const shown = selected ? logs.filter((l) => ymd(new Date(l.createdAt)) === selected) : logs;
+  const areaGroups = AREA_ORDER.map((area) => ({
+    area,
+    logs: logs.filter((l) => getPlay(l.playId)?.area === area),
+  })).filter((g) => g.logs.length > 0);
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_FAB_SAFE}`}>
@@ -65,7 +77,27 @@ export default function LogsPage() {
         </Link>
       )}
 
-      <WeekBar logs={logs} today={today} selected={selected} onSelect={setSelected} />
+      <div role="tablist" aria-label="기록 보기 방식" className="mt-4 flex gap-5 border-b border-line">
+        {VIEWS.map((v) => {
+          const on = view === v.key;
+          return (
+            <button
+              key={v.key}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setView(v.key)}
+              className={`pressable -mb-px min-h-11 border-b-2 text-[15px] ${
+                on ? "border-ink font-bold text-ink" : "border-transparent font-semibold text-mute"
+              }`}
+            >
+              {v.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === "date" && <WeekBar logs={logs} today={today} selected={selected} onSelect={setSelected} />}
 
       <div className="mt-2 flex items-center justify-between">
         <Link
@@ -75,12 +107,29 @@ export default function LogsPage() {
           <Icon icon={FileText} size={18} />
           상담용 리포트 만들기
         </Link>
-        {selected && <TextButton onClick={() => setSelected(null)}>전체 보기</TextButton>}
+        {view === "date" && selected && <TextButton onClick={() => setSelected(null)}>전체 보기</TextButton>}
       </div>
 
       {logs.length === 0 ? (
         <div className="mt-4">
           <EmptyState text="아직 기록이 없어요. 오늘 놀이를 해 보고 첫 기록을 남겨 보세요." action="오늘 놀이 고르기" href="/" />
+        </div>
+      ) : view === "area" ? (
+        <div className="mt-4 flex flex-col gap-6">
+          {areaGroups.map((g) => (
+            <section key={g.area}>
+              <h2 className="mb-3 flex items-baseline gap-1.5 text-[15px] font-bold">
+                {AREA_LABEL[g.area]}
+                <span className="text-[12.5px] font-semibold text-sub">{g.logs.length}개</span>
+              </h2>
+              <ol className="relative pl-[22px]">
+                <span className="absolute bottom-2 left-[5px] top-2 w-0.5 bg-line" aria-hidden />
+                {g.logs.map((l, i) => (
+                  <TimelineItem key={l.id} log={l} recent={i === 0} />
+                ))}
+              </ol>
+            </section>
+          ))}
         </div>
       ) : shown.length === 0 ? (
         <p className="mt-6 text-[13.5px] font-medium text-sub">이날은 기록이 없어요.</p>
@@ -155,12 +204,11 @@ function TimelineItem({ log, recent }: { log: PlayLog; recent: boolean }) {
           {play && <AreaChip area={play.area} />}
         </div>
         {log.memo && <p className="mt-2 text-[13.5px] font-medium leading-[1.55] text-memo">“{log.memo}”</p>}
-        {log.photoPath && (
+        {log.photoPaths.length > 0 && (
           <div className="mt-2.5 flex gap-1.5">
-            {/* TODO(DB 연결): Storage 이미지 URL로 교체 */}
-            <span className="block size-16 overflow-hidden rounded-[10px]" role="img" aria-label="놀이 사진">
-              <Illustration height={64} seed={log.id.length} />
-            </span>
+            {log.photoPaths.map((path) => (
+              <StoragePhoto key={path} path={path} />
+            ))}
           </div>
         )}
         <div className="mt-3 flex gap-1.5">

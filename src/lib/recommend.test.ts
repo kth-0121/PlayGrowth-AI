@@ -1,7 +1,7 @@
 // 추천 규칙 점검: npx tsx src/lib/recommend.test.ts
 import assert from "node:assert/strict";
 import type { Play, PlayLog, Reaction, Done, SurveyResult } from "@/types";
-import { firstRecommendation, nextRecommendation } from "./recommend";
+import { areaPriority, firstRecommendation, nextRecommendation, pickInArea } from "./recommend";
 
 const mk = (id: string, series: string, step: 1 | 2 | 3, area: Play["area"]): Play => ({
   id, series, step, area, title: id, months: [0, 83], minutes: 10, materials: [], steps: [], tips: [], reviewedBy: "test",
@@ -13,7 +13,7 @@ const PLAYS = [
 ];
 let t = 0;
 const log = (playId: string, done: Done, reaction: Reaction): PlayLog => ({
-  id: String(t), childId: "k", playId, done, reaction, memo: null, photoPath: null,
+  id: String(t), childId: "k", playId, done, reaction, memo: null, photoPaths: [],
   createdAt: new Date(2026, 10, 1, 0, 0, t++).toISOString(),
 });
 const result: SurveyResult = {
@@ -43,4 +43,20 @@ assert.equal(                                                                   
     [...PLAYS, mk("c2", "c", 2, "fine")])!.play.id,
   "c2",
 );
+
+// 부모 관심(ChildPrefs)
+const G = [...PLAYS, mk("g1", "g", 1, "gross"), mk("g2", "g", 2, "gross"), mk("s1", "s", 1, "soc")];
+const prefs = (concernAreas: Play["area"][], likes: Play["area"][] = []) => ({ concernAreas, likes });
+assert.deepEqual(areaPriority(result, prefs(["fine", "soc"])), ["fine", "lang", "soc"]); // 둘 다 → focus만 → 부모 선택만
+assert.equal(firstRecommendation(result, 24, G, prefs(["fine"]))!.play.id, "c1");        // focus∩선택(소근육)이 1순위
+assert.equal(firstRecommendation(null, 24, G, prefs(["soc"]))!.play.id, "s1");           // 설문 없으면 부모 선택 영역
+const allGood: SurveyResult = { ...result, focus: [], startStep: { lang: 3, cog: 3, soc: 3, gross: 2, fine: 3 } };
+assert.equal(firstRecommendation(allGood, 24, G, prefs([], ["gross"]))!.play.id, "g2");  // 모두 ③이면 좋아하는 놀이, 설문 단계
+assert.equal(                                                                            // 균형 이동 때 좋아하는 영역 먼저
+  nextRecommendation(allGood, 24,
+    [log("a1", "done", "enjoyed"), log("a2", "done", "enjoyed"), log("b1", "done", "neutral")],
+    G, prefs([], ["gross"]))!.play.area,
+  "gross",
+);
+assert.equal(pickInArea("lang", result, 24, "a1", [], G)!.play.id, "b1");                   // 영역 고르기: 지금 놀이 빼고 같은 단계
 console.log("recommend: all checks passed");

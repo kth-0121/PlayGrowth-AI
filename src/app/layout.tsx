@@ -5,6 +5,7 @@ import { OfflineBanner } from "@/components/StatusViews";
 import TabBar from "@/components/TabBar";
 import { Toaster } from "@/components/Toast";
 import "./globals.css";
+import AuthGate from "@/components/auth-gate";
 
 // 포인트 폰트: 놀이 상세 제목에만 사용 (font-display 클래스)
 const gowunBatang = Gowun_Batang({
@@ -22,6 +23,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#3f8f6e",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -38,7 +40,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* 데스크톱에서는 480px 앱 화면처럼 가운데 정렬 */}
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-bg">
           <OfflineBanner />
-          {children}
+          {/* usePathname을 쓰므로 Suspense 안에 (동적 경로 미리 렌더 대비) */}
+          <Suspense fallback={<main className="flex-1" />}>
+            <AuthGate>{children}</AuthGate>
+          </Suspense>
           <Suspense fallback={null}>
             <TabBar />
           </Suspense>

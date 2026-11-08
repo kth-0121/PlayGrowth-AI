@@ -2,19 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { Check, ImagePlus, X } from "lucide-react";
 import type { Area, Done, Reaction } from "@/types";
-import { Button } from "@/components/Button";
-import { AreaChip, DONE_LABEL, REACTION_LABEL } from "@/components/Chip";
+import { Button, TextButton } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { AreaChip, DONE_LABEL, REACTION_LABEL, TimeChip } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { PageSkeleton } from "@/components/Skeleton";
-import { toast } from "@/components/Toast";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { callName } from "@/lib/copy";
 import { ageInMonths } from "@/lib/age";
-import { childLogs, currentChild, latestSurvey, savePlayLog, saveRecommendation, useLocalData } from "@/lib/local-store";
-import { nextRecommendation } from "@/lib/recommend";
+import { childLogs, childPrefs, currentChild, latestSurvey, savePlayLog, saveRecommendation, useLocalData } from "@/lib/local-store";
+import { nextRecommendation, type Pick } from "@/lib/recommend";
+import { uploadPhoto } from "@/lib/supabase";
 
 const DONE: Done[] = ["done", "partial", "notDone"];
 const REACTIONS: Reaction[] = ["enjoyed", "neutral", "hard"];
@@ -25,7 +26,9 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
   const [done, setDone] = useState<Done | null>(null);
   const [reaction, setReaction] = useState<Reaction | null>(null);
   const [memo, setMemo] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<{ url: string; file: File }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState<{ next: Pick | null } | null>(null);
 
   if (!data) return <PageSkeleton withTab={false} />;
   const child = currentChild(data);
@@ -40,24 +43,75 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
 
   function addPhotos(files: FileList | null) {
     if (!files) return;
-    setPhotos((prev) => [...prev, ...Array.from(files).map((f) => URL.createObjectURL(f))].slice(0, 4));
+    setPhotos((prev) => [...prev, ...Array.from(files).map((file) => ({ url: URL.createObjectURL(file), file }))].slice(0, 4));
   }
   function removePhoto(url: string) {
     URL.revokeObjectURL(url);
-    setPhotos((prev) => prev.filter((p) => p !== url));
+    setPhotos((prev) => prev.filter((p) => p.url !== url));
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!child || !done || !reaction) return;
-    // TODO(DB 연결): 사진을 Storage에 올리고 photoPath 저장
-    const log = savePlayLog({ childId: child.id, playId, done, reaction, memo: memo.trim() || null, photoPath: null });
+    if (!child || !done || !reaction || busy) return;
+    setBusy(true);
+    // 사진은 내 폴더에 올림. 실패한 사진은 빼고 기록은 저장
+    const uploaded = await Promise.allSettled(photos.map((p) => uploadPhoto(p.file)));
+    const photoPaths = uploaded.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    if (photoPaths.length < photos.length) console.error("[noridari] 사진 일부 업로드 실패", uploaded);
+    const log = savePlayLog({ childId: child.id, playId, done, reaction, memo: memo.trim() || null, photoPaths });
     // 방금 기록까지 반영해 다음 놀이 추천 → 기록 목록 상단과 홈 '오늘의 놀이'에 보임
     const logs = [...childLogs(data!, child.id), log];
-    const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs);
+    const next = nextRecommendation(latestSurvey(data!, child.id)?.result ?? null, ageInMonths(child.birthDate), logs, undefined, childPrefs(child));
     if (next) saveRecommendation({ childId: child.id, playId: next.play.id, reason: next.reason });
-    toast("기록했어요. 다음 놀이에 반영할게요");
-    router.push("/logs");
+    // 저장 후 바로 다음 놀이로 이어갈 수 있게 완료 화면을 보여줌
+    setSaved({ next });
+    setBusy(false);
+  }
+
+  if (saved) {
+    const next = saved.next;
+    return (
+      <main className="flex flex-1 flex-col px-5 pb-[calc(32px+env(safe-area-inset-bottom))]">
+        <PageHeader title="기록 완료" />
+        <div className="mt-6 flex flex-col items-center gap-3 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-sage-light text-sage-dark">
+            <Icon icon={Check} size={28} />
+          </span>
+          <H1>오늘 놀이 잘 마쳤어요</H1>
+          <p className="text-[13.5px] font-medium leading-[1.55] text-sub">
+            {callName(child.nickname)}가 더 놀고 싶어 하면 하나 더 해 봐요.
+            <br />
+            오늘은 여기까지 해도 충분해요.
+          </p>
+        </div>
+
+        {next && (
+          <Card className="mt-7">
+            <p className="text-[12.5px] font-semibold text-sub">{next.play.id === playId ? "다시 해 볼 놀이" : "다음 놀이"}</p>
+            <div className="mt-2 flex gap-1.5">
+              <AreaChip area={next.play.area} />
+              <TimeChip minutes={next.play.minutes} />
+            </div>
+            <h2 className="mt-2 text-[17px] font-bold leading-[1.35]">{next.play.title}</h2>
+            <p className="mt-1 text-[13px] font-medium leading-[1.5] text-sub">{next.reason}</p>
+          </Card>
+        )}
+
+        <div className="mt-auto flex flex-col gap-2 pt-8">
+          {next && (
+            <Button full onClick={() => router.push(`/play/${next.play.id}`)}>
+              {next.play.id === playId ? "한 번 더 하기" : "다른 놀이 하기"}
+            </Button>
+          )}
+          <Button full variant="secondary" onClick={() => router.push("/")}>
+            오늘은 여기까지
+          </Button>
+          <TextButton onClick={() => router.push("/logs")} className="self-center">
+            기록 보러 가기
+          </TextButton>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -87,7 +141,7 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
       <div className="mt-7 flex flex-col gap-2">
         <span className="text-[13px] font-semibold text-sub">사진</span>
         <div className="flex flex-wrap gap-1.5">
-          {photos.map((url) => (
+          {photos.map(({ url }) => (
             <div key={url} className="relative size-16">
               {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 blob 미리보기 */}
               <img src={url} alt="추가한 사진" className="size-16 rounded-[10px] object-cover" />
@@ -113,8 +167,8 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
       </div>
 
       <div className="mt-auto pt-8">
-        <Button type="submit" full disabled={!done || !reaction}>
-          기록 저장
+        <Button type="submit" full disabled={!done || !reaction || busy}>
+          {busy ? "저장하는 중…" : "기록 저장"}
         </Button>
       </div>
     </form>

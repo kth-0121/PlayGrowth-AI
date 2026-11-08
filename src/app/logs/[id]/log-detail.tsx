@@ -7,11 +7,11 @@ import type { Done, Reaction } from "@/types";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button, ButtonLink, TextButton } from "@/components/Button";
 import { AreaChip, DONE_LABEL, REACTION_LABEL, ReactionTag } from "@/components/Chip";
-import { Illustration } from "@/components/Illustration";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { PageSkeleton } from "@/components/Skeleton";
 import { NoResult } from "@/components/StatusViews";
+import { StoragePhoto } from "@/components/StoragePhoto";
 import { toast } from "@/components/Toast";
 import { logTimeLabel } from "@/lib/dates";
 import { deletePlayLog, updatePlayLog, useLocalData } from "@/lib/local-store";
@@ -113,10 +113,11 @@ export default function LogDetail() {
             ) : (
               <p className="text-[14px] font-medium text-sub">남긴 메모가 없어요.</p>
             )}
-            {log.photoPath && (
-              <div className="mt-3 overflow-hidden rounded-[12px]" role="img" aria-label="놀이 사진">
-                {/* TODO(DB 연결): Storage 이미지로 교체 */}
-                <Illustration height={180} seed={log.id.length} />
+            {log.photoPaths.length > 0 && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {log.photoPaths.map((p) => (
+                  <StoragePhoto key={p} path={p} className="aspect-square w-full" />
+                ))}
               </div>
             )}
             <div className="mt-4 flex gap-1.5">

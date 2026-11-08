@@ -21,10 +21,16 @@ import { getPlay } from "@/lib/recommend";
 import { ruleReport, type ReportText } from "@/lib/report";
 import { AREA_ORDER } from "@/lib/survey";
 
-type Period = "14" | "28" | "all";
+type Period = "7" | "14" | "30";
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "7", label: "1주" },
+  { value: "14", label: "2주" },
+  { value: "30", label: "한 달" },
+];
 const fmt = (d: Date) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
 
-// 상담용 리포트: 기간 선택 → 요약 → 미리보기 → PDF 저장·링크 공유
+// 상담용 리포트: 기간 선택 → 영역별 → 즐거워한/어려워한 놀이 → 관찰 메모 → 정리 문장 → 센터 공유(미리보기·PDF·링크)
+// 정리 문장은 /api/report (로컬 AI, 꺼져 있으면 규칙 문장)
 export default function ReportPage() {
   const data = useLocalData();
   const [period, setPeriod] = useState<Period>("14");
@@ -40,13 +46,13 @@ export default function ReportPage() {
     return (
       <main className={`flex flex-1 flex-col gap-6 px-5 ${TAB_SAFE}`}>
         <PageHeader back />
-        <EmptyState text="기록이 쌓이면 상담 때 보여줄 리포트를 만들 수 있어요." action="놀이 일기 보기" href="/logs" />
+        <EmptyState text="기록이 쌓이면 상담 때 보여줄 리포트를 만들 수 있어요." action="기록 보러 가기" href="/logs" />
       </main>
     );
   }
 
   // 서버 렌더 중엔 위에서 Skeleton으로 끝나므로 여기서만 현재 시각을 읽음
-  const since = period === "all" ? 0 : new Date().getTime() - Number(period) * 86_400_000;
+  const since = new Date().getTime() - Number(period) * 86_400_000;
   const logs = all.filter((l) => new Date(l.createdAt).getTime() >= since);
 
   async function makeText(target: PlayLog[]) {
@@ -87,7 +93,7 @@ export default function ReportPage() {
   const byArea = AREA_ORDER.map((a) => ({ area: a as Area, n: logs.filter((l) => getPlay(l.playId)?.area === a).length })).filter((x) => x.n > 0);
   const max = Math.max(1, ...byArea.map((x) => x.n));
   const titles = (r: "enjoyed" | "hard") => [...new Set(logs.filter((l) => l.reaction === r).map((l) => getPlay(l.playId)?.title ?? ""))];
-  const memos = logs.filter((l) => l.memo).slice(0, 4);
+  const memos = logs.filter((l) => l.memo).slice(0, 5);
 
   const body = (
     <>
@@ -111,9 +117,9 @@ export default function ReportPage() {
         <h2 className="mt-4 text-[13px] font-semibold text-sub">어려워한 놀이</h2>
         <p className="mt-1.5 text-[14px] font-medium leading-[1.5]">{titles("hard").join(", ") || "이 기간에는 없어요"}</p>
       </Card>
-      {memos.length > 0 && (
-        <Card className="mt-3">
-          <h2 className="text-[13px] font-semibold text-sub">보호자 관찰 메모</h2>
+      <Card className="mt-3">
+        <h2 className="text-[13px] font-semibold text-sub">보호자 관찰 메모</h2>
+        {memos.length > 0 ? (
           <ul className="mt-2 flex flex-col gap-2">
             {memos.map((l) => (
               <li key={l.id} className="text-[13.5px] font-medium leading-[1.55] text-memo">
@@ -121,8 +127,10 @@ export default function ReportPage() {
               </li>
             ))}
           </ul>
-        </Card>
-      )}
+        ) : (
+          <p className="mt-1.5 text-[13.5px] font-medium text-sub">이 기간에 남긴 메모가 없어요.</p>
+        )}
+      </Card>
     </>
   );
 
@@ -168,25 +176,13 @@ export default function ReportPage() {
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_SAFE}`}>
       <PageHeader back title="상담용 리포트" />
-      <H1 className="mt-2">{`${name} 놀이 기록을\n상담 날 보여 줄 수 있게 정리해요`}</H1>
+      <SegmentedControl label="리포트 기간" value={period} onChange={changePeriod} options={PERIODS} />
+      <H1 className="mt-5">{`${name} 놀이 기록을\n상담 날 보여 줄 수 있게 정리해요`}</H1>
       <p className="mt-1.5 text-[13.5px] font-medium text-sub">해석과 평가는 전문가의 몫이에요. 있었던 일만 모아요.</p>
-
-      <div className="mt-5">
-        <SegmentedControl
-          label="기간"
-          value={period}
-          onChange={changePeriod}
-          options={[
-            { value: "14", label: "최근 2주" },
-            { value: "28", label: "최근 4주" },
-            { value: "all", label: "전체" },
-          ]}
-        />
-      </div>
 
       {logs.length === 0 ? (
         <div className="mt-3">
-          <NoResult text="이 기간에는 기록이 없어요. 기간을 넓혀 보세요." />
+          <NoResult text="이 기간에는 기록이 없어요. 기간을 늘려 보세요." />
         </div>
       ) : (
         <>
@@ -219,8 +215,9 @@ export default function ReportPage() {
           </Card>
 
           <Button full className="mt-5" onClick={() => setPreview(true)}>
-            미리보기
+            센터에 보여줄 화면 미리보기
           </Button>
+          <p className="mt-2 text-center text-[12px] font-medium text-sub">미리보기에서 PDF로 저장하거나 링크를 복사해요</p>
         </>
       )}
     </main>

@@ -1,5 +1,6 @@
 // 커뮤니티 화면 확인용 가짜 글·댓글 (DB 연결 전)
-import type { Comment, Post } from "@/lib/local-store";
+import type { Comment } from "@/lib/comments";
+import type { Post } from "@/lib/local-store";
 
 const hoursAgo = (h: number) => new Date(Date.UTC(2026, 10, 7, 9) - h * 3_600_000).toISOString();
 
@@ -14,15 +15,15 @@ export const DEMO_POSTS: Post[] = [
 ];
 
 export const DEMO_COMMENTS: Comment[] = [
-  { id: "c1", postId: "p1", nickname: "도토리맘", body: "손바닥으로 바꾸는 거 좋은 방법이네요. 저도 해 볼게요.", createdAt: hoursAgo(1.5) },
-  { id: "c2", postId: "p1", nickname: "구름", body: "같이 앉아 있는 시간이 생긴다는 말에 공감해요.", createdAt: hoursAgo(1) },
-  { id: "c3", postId: "p1", nickname: "익명", body: "저희는 냄비 대신 플라스틱 그릇으로 했어요. 소리가 덜 커서 좋았어요.", createdAt: hoursAgo(0.5) },
-  { id: "c4", postId: "p2", nickname: "콩이네", body: "큰 집게 팁 감사해요!", createdAt: hoursAgo(8) },
-  { id: "c5", postId: "p3", nickname: "하늘이아빠", body: "아이마다 속도가 달라서 너무 기대하지 않는 게 마음이 편하더라고요.", createdAt: hoursAgo(20) },
-  { id: "c6", postId: "p3", nickname: "별이네", body: "매일 못 해도 괜찮다고 들었어요. 즐겁게 하는 게 먼저래요.", createdAt: hoursAgo(18) },
-  { id: "c7", postId: "p4", nickname: "봄봄", body: "메모가 더 도움이 됐다는 거 신기하네요. 저도 정리해 볼게요.", createdAt: hoursAgo(4) },
-  { id: "c8", postId: "p4", nickname: "구름", body: "리포트 기능으로 정리하니까 편했어요.", createdAt: hoursAgo(3) },
-  { id: "c9", postId: "p6", nickname: "콩이네", body: "저도 그래요. 어제보다 하나 더 한 것만 보려고 해요.", createdAt: hoursAgo(3) },
-  { id: "c10", postId: "p6", nickname: "도토리맘", body: "비교하는 마음이 드는 것 자체가 자연스러운 거래요. 힘내요.", createdAt: hoursAgo(2) },
-  { id: "c11", postId: "p7", nickname: "하늘이아빠", body: "피곤한 날은 5분만 해도 충분하대요.", createdAt: hoursAgo(40) },
+  { id: "c1", authorId: "", postId: "p1", nickname: "도토리맘", body: "손바닥으로 바꾸는 거 좋은 방법이네요. 저도 해 볼게요.", createdAt: hoursAgo(1.5) },
+  { id: "c2", authorId: "", postId: "p1", nickname: "구름", body: "같이 앉아 있는 시간이 생긴다는 말에 공감해요.", createdAt: hoursAgo(1) },
+  { id: "c3", authorId: "", postId: "p1", nickname: "익명", body: "저희는 냄비 대신 플라스틱 그릇으로 했어요. 소리가 덜 커서 좋았어요.", createdAt: hoursAgo(0.5) },
+  { id: "c4", authorId: "", postId: "p2", nickname: "콩이네", body: "큰 집게 팁 감사해요!", createdAt: hoursAgo(8) },
+  { id: "c5", authorId: "", postId: "p3", nickname: "하늘이아빠", body: "아이마다 속도가 달라서 너무 기대하지 않는 게 마음이 편하더라고요.", createdAt: hoursAgo(20) },
+  { id: "c6", authorId: "", postId: "p3", nickname: "별이네", body: "매일 못 해도 괜찮다고 들었어요. 즐겁게 하는 게 먼저래요.", createdAt: hoursAgo(18) },
+  { id: "c7", authorId: "", postId: "p4", nickname: "봄봄", body: "메모가 더 도움이 됐다는 거 신기하네요. 저도 정리해 볼게요.", createdAt: hoursAgo(4) },
+  { id: "c8", authorId: "", postId: "p4", nickname: "구름", body: "리포트 기능으로 정리하니까 편했어요.", createdAt: hoursAgo(3) },
+  { id: "c9", authorId: "", postId: "p6", nickname: "콩이네", body: "저도 그래요. 어제보다 하나 더 한 것만 보려고 해요.", createdAt: hoursAgo(3) },
+  { id: "c10", authorId: "", postId: "p6", nickname: "도토리맘", body: "비교하는 마음이 드는 것 자체가 자연스러운 거래요. 힘내요.", createdAt: hoursAgo(2) },
+  { id: "c11", authorId: "", postId: "p7", nickname: "하늘이아빠", body: "피곤한 날은 5분만 해도 충분하대요.", createdAt: hoursAgo(40) },
 ];

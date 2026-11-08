@@ -80,6 +80,17 @@ export type SurveyResult = {
   suggestConsult: boolean;
 };
 
+// ── 아이 정보: 부모가 고르는 관심 (선택, MY에서 언제든 수정) ──────────
+// 진단이 아니라 부모의 바람. 화면 문구는 '발달이 느린 영역'이 아니라 '더 함께 놀아 주고 싶은 영역'.
+// 추천 순서
+// - 영역: 설문 focus와 concernAreas 둘 다 → focus만 → concernAreas만 (설문이 없으면 concernAreas만)
+// - 모두 잘하고 있으면(focus·concernAreas 없음) likes 영역부터
+// - 균형 맞출 때(한 영역에 몰림) 덜 해본 영역 중 위 순서 → likes 순으로
+export type ChildPrefs = {
+  likes: Area[];        // 좋아하는 놀이 종류 (소리·생각·주고받기·몸·손 놀이 = 영역 코드)
+  concernAreas: Area[]; // 더 함께 놀아 주고 싶은 영역
+};
+
 // ── 기능 2. 맞춤 놀이 추천 ───────────────────────────────
 // data/plays.json
 export type Play = {
@@ -107,7 +118,7 @@ export type PlayLog = {
   done: Done;
   reaction: Reaction;
   memo: string | null;
-  photoPath: string | null; // 돌아보기용. AI가 사진으로 판단하지 않음
+  photoPaths: string[]; // Storage 경로 (최대 4장). 돌아보기용, AI가 사진으로 판단하지 않음
   createdAt: string;
 };
 

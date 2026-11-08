@@ -67,11 +67,3 @@ export function Logo() {
   );
 }
 
-/** 아이콘 배경 박스가 꼭 필요할 때: 44px, sage-light 배경, sage 아이콘 */
-export function IconBox({ icon, className = "" }: { icon: IconType; className?: string }) {
-  return (
-    <span className={`flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-sage-light text-sage ${className}`}>
-      <Icon icon={icon} size={20} />
-    </span>
-  );
-}

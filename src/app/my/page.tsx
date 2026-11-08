@@ -13,9 +13,11 @@ import { PageSkeleton } from "@/components/Skeleton";
 import { TAB_SAFE } from "@/components/TabBar";
 import { toast } from "@/components/Toast";
 import { ageInMonths, formatMonths } from "@/lib/age";
+import { AREA_PLAY_NAME } from "@/lib/copy";
 import { daysBetween, ymd } from "@/lib/dates";
 import {
   childLogs,
+  childPrefs,
   clearAll,
   currentChild,
   deleteAllLogs,
@@ -25,6 +27,17 @@ import {
   switchChild,
   useLocalData,
 } from "@/lib/local-store";
+import { supabase } from "@/lib/supabase";
+import { AREA_LABEL, type ChildPrefs } from "@/types";
+
+/** "좋아해요: 몸 놀이 · 함께하고 싶어요: 언어" */
+function prefsSummary(p: ChildPrefs) {
+  const parts = [
+    p.likes.length ? `좋아해요: ${p.likes.map((a) => AREA_PLAY_NAME[a]).join(", ")}` : "",
+    p.concernAreas.length ? `함께하고 싶어요: ${p.concernAreas.map((a) => AREA_LABEL[a]).join(", ")}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "아직 고르지 않았어요";
+}
 
 const INPUT =
   "h-[52px] w-full rounded-[12px] border border-line bg-card px-4 text-[15px] font-medium outline-none placeholder:text-mute focus:border-sage focus:ring-[0.5px] focus:ring-sage";
@@ -33,7 +46,7 @@ type Confirm = "photos" | "logs" | "withdraw" | null;
 const CONFIRM: Record<Exclude<Confirm, null>, { title: string; body: string; action: string; run: () => void; done: string }> = {
   photos: { title: "사진을 모두 지울까요?", body: "기록은 남고 사진만 지워져요. 되돌릴 수 없어요.", action: "사진 지우기", run: deleteAllPhotos, done: "사진을 모두 지웠어요" },
   logs: { title: "놀이 기록을 모두 지울까요?", body: "기록과 추천 내역이 지워지고 리포트도 비어요. 되돌릴 수 없어요.", action: "기록 지우기", run: deleteAllLogs, done: "기록을 모두 지웠어요" },
-  withdraw: { title: "동의를 철회할까요?", body: "아이 정보, 설문, 기록, 사진이 이 기기에서 모두 지워지고 처음 화면으로 돌아가요.", action: "철회하고 모두 지우기", run: clearAll, done: "동의를 철회하고 모두 지웠어요" },
+  withdraw: { title: "동의를 철회할까요?", body: "아이 정보, 설문, 기록, 사진이 모두 지워지고 처음 화면으로 돌아가요. 커뮤니티 글은 남아요.", action: "철회하고 모두 지우기", run: clearAll, done: "동의를 철회하고 모두 지웠어요" },
 };
 
 export default function MyPage() {
@@ -84,6 +97,19 @@ export default function MyPage() {
         <div className="mt-5">
           <EmptyState text="아이 정보를 넣으면 프로필과 기록이 여기 모여요." action="아이 정보 입력" href="/onboarding" />
         </div>
+      )}
+
+      {child && (
+        <ListGroup className="mt-3">
+          <ListRow href="/my/prefs" chevron>
+            <p className="text-[15px] font-semibold">관심 놀이·영역 바꾸기</p>
+            <p className="mt-0.5 text-[12.5px] font-medium text-sub">{prefsSummary(childPrefs(child))}</p>
+          </ListRow>
+          <ListRow href="/survey" chevron>
+            <p className="text-[15px] font-semibold">요즘 모습 다시 답하기</p>
+            <p className="mt-0.5 text-[12.5px] font-medium text-sub">질문 9개 · 3분</p>
+          </ListRow>
+        </ListGroup>
       )}
 
       <h2 id="center" className="mt-7 scroll-mt-4 text-[13px] font-semibold text-sub">
@@ -150,6 +176,12 @@ export default function MyPage() {
         </ListRow>
         <ListRow onClick={() => toast("문의 창구는 준비 중이에요")} chevron>
           <p className="text-[15px] font-semibold">문의하기</p>
+        </ListRow>
+      </ListGroup>
+
+      <ListGroup className="mt-7">
+        <ListRow onClick={() => supabase.auth.signOut()}>
+          <p className="text-[15px] font-semibold">로그아웃</p>
         </ListRow>
       </ListGroup>
 
@@ -233,7 +265,7 @@ export default function MyPage() {
         <div className="flex flex-col gap-3 pb-2 text-[14px] font-medium leading-[1.6]">
           <p>놀이다리는 의료 서비스가 아니에요. 발달지연이나 발달장애를 진단하지 않고, 놀이 추천은 전문 평가와 치료를 대신하지 않아요.</p>
           <p className="text-sub">걱정되는 모습이 있으면 기다리는 센터나 가까운 소아청소년과에 상담을 문의해 주세요.</p>
-          <p className="text-sub">아이 정보와 기록은 지금 이 기기에만 저장되고, 아이 기록을 외부 AI 서비스로 보내지 않아요.</p>
+          <p className="text-sub">아이 정보와 기록은 로그인한 계정에만 저장되고, 아이 기록을 외부 AI 서비스로 보내지 않아요.</p>
         </div>
       </BottomSheet>
 

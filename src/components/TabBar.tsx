@@ -2,26 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, MessageSquare, NotebookPen, User } from "lucide-react";
-import { BlocksIcon, Icon, type IconType } from "./Icon";
+import { BlockBearChar, BubbleDuckChar, KittenChar, PencilSquirrelChar, SproutChar } from "./TabCharacters";
 
-const TABS: { href: string; label: string; icon: IconType; match: (p: string) => boolean }[] = [
-  { href: "/", label: "홈", icon: House, match: (p) => p === "/" },
-  { href: "/play", label: "놀이", icon: BlocksIcon, match: (p) => p.startsWith("/play") },
-  { href: "/logs", label: "기록", icon: NotebookPen, match: (p) => p.startsWith("/logs") },
-  { href: "/community", label: "이야기", icon: MessageSquare, match: (p) => p.startsWith("/community") },
-  { href: "/my", label: "MY", icon: User, match: (p) => p.startsWith("/my") },
+type Char = (p: { className?: string }) => React.ReactElement;
+
+const TABS: { href: string; label: string; char: Char; match: (p: string) => boolean }[] = [
+  { href: "/", label: "홈", char: SproutChar, match: (p) => p === "/" },
+  { href: "/play", label: "놀이", char: BlockBearChar, match: (p) => p.startsWith("/play") },
+  { href: "/logs", label: "기록", char: PencilSquirrelChar, match: (p) => p.startsWith("/logs") },
+  { href: "/community", label: "커뮤니티", char: BubbleDuckChar, match: (p) => p.startsWith("/community") },
+  { href: "/my", label: "MY", char: KittenChar, match: (p) => p.startsWith("/my") },
 ];
 
 // 한 가지 일에 집중하는 화면에서는 탭바를 숨김
 const HIDDEN = [
   /^\/welcome/,
   /^\/onboarding/,
-  /^\/child/,
   /^\/survey/,
   /^\/play\/[^/]+\/(log|go)/,
   /^\/logs\/[^/]+/,
-  /^\/community\/[^/]+/,
+  /^\/community\/(write|post|[^/]+)/,
+  /^\/my\/prefs/,
 ];
 
 export default function TabBar() {
@@ -40,9 +41,14 @@ export default function TabBar() {
               <Link
                 href={t.href}
                 aria-current={on ? "page" : undefined}
-                className={`pressable flex h-full flex-col items-center justify-center gap-1 ${on ? "text-ink" : "text-mute"}`}
+                className={`pressable flex h-full flex-col items-center justify-center gap-0.5 ${on ? "text-ink" : "text-mute"}`}
               >
-                <Icon icon={t.icon} size={22} />
+                {/* 선택 안 된 탭은 흑백으로 */}
+                <t.char
+                  className={`size-[30px] transition-[filter,opacity,transform] ${
+                    on ? "-translate-y-0.5" : "opacity-55 grayscale"
+                  }`}
+                />
                 <span className="text-[10.5px] font-semibold">{t.label}</span>
               </Link>
             </li>
