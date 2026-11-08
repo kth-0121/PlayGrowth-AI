@@ -29,7 +29,7 @@ import {
   saveRecommendation,
   useLocalData,
 } from "@/lib/local-store";
-import { areaPriority, areasForMonths, firstRecommendation, getPlay, nextPlay, pickInArea } from "@/lib/recommend";
+import { areaPriority, areasForMonths, firstRecommendation, getPlay, likedAreasOf, nextPlay, pickInArea } from "@/lib/recommend";
 import { AREA_ORDER } from "@/lib/survey";
 
 export default function Home() {
@@ -118,7 +118,7 @@ export default function Home() {
           open={picking}
           current={play.area}
           focus={areaPriority(survey?.result ?? null, prefs)}
-          likes={prefs.likes}
+          likes={likedAreasOf(prefs)}
           available={areasForMonths(months)}
           onPick={otherPlay}
           onClose={() => setPicking(false)}

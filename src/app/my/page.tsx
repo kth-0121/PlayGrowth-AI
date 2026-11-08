@@ -13,7 +13,6 @@ import { PageSkeleton } from "@/components/Skeleton";
 import { TAB_SAFE } from "@/components/TabBar";
 import { toast } from "@/components/Toast";
 import { ageInMonths, formatMonths } from "@/lib/age";
-import { AREA_PLAY_NAME } from "@/lib/copy";
 import { daysBetween, ymd } from "@/lib/dates";
 import {
   childLogs,
@@ -28,13 +27,13 @@ import {
   useLocalData,
 } from "@/lib/local-store";
 import { supabase } from "@/lib/supabase";
-import { AREA_LABEL, type ChildPrefs } from "@/types";
+import { NURI_AREA, PLAY_CORNER, type ChildPrefs } from "@/types";
 
-/** "좋아해요: 몸 놀이 · 함께하고 싶어요: 언어" */
+/** "좋아해요: 신체영역 · 함께하고 싶어요: 의사소통" */
 function prefsSummary(p: ChildPrefs) {
   const parts = [
-    p.likes.length ? `좋아해요: ${p.likes.map((a) => AREA_PLAY_NAME[a]).join(", ")}` : "",
-    p.concernAreas.length ? `함께하고 싶어요: ${p.concernAreas.map((a) => AREA_LABEL[a]).join(", ")}` : "",
+    p.likes.length ? `좋아해요: ${p.likes.map((c) => PLAY_CORNER[c].label).join(", ")}` : "",
+    p.concernAreas.length ? `함께하고 싶어요: ${p.concernAreas.map((n) => NURI_AREA[n].label).join(", ")}` : "",
   ].filter(Boolean);
   return parts.length ? parts.join(" · ") : "아직 고르지 않았어요";
 }

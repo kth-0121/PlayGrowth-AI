@@ -3,7 +3,8 @@
 // 로그인하면 syncFromServer()로 서버의 내 데이터를 캐시에 채움. 필드는 supabase/schema.sql 기준.
 // 이 기기에만 두는 것: 저장한 놀이, 놀이 진행 위치, 설문 임시 저장, 알림 설정 (schema.sql에 없음 → 통합 담당과 논의)
 import { useSyncExternalStore } from "react";
-import type { AgeGroup, Area, Board, ChildPrefs, Frequency, Level, PlayLog, SurveyAnswers, SurveyResult, TempItem } from "@/types";
+import { NURI_AREA, PLAY_CORNER } from "@/types";
+import type { AgeGroup, Area, Board, ChildPrefs, Frequency, Level, NuriArea, PlayCorner, PlayLog, SurveyAnswers, SurveyResult, TempItem } from "@/types";
 import { supabase } from "./supabase";
 
 export type Child = {
@@ -11,8 +12,8 @@ export type Child = {
   nickname: string;
   birthDate: string; // YYYY-MM-DD
   consentAt: string; // 보호자 동의 시각
-  likes?: Area[]; // ChildPrefs (예전 캐시에는 없을 수 있음 → childPrefs()로 읽기)
-  concernAreas?: Area[];
+  likes?: string[]; // ChildPrefs (예전 캐시에는 없거나 예전 영역 코드일 수 있음 → childPrefs()로 읽기)
+  concernAreas?: string[];
   createdAt: string;
 };
 
@@ -205,9 +206,17 @@ export function switchChild(id: string) {
 
 /** 아이의 관심(좋아하는 놀이·더 함께하고 싶은 영역). 없으면 빈 배열 */
 export const childPrefs = (c: Child | null | undefined): ChildPrefs => ({
-  likes: c?.likes ?? [],
-  concernAreas: c?.concernAreas ?? [],
+  likes: known(c?.likes, PLAY_CORNER, OLD_LIKE),
+  concernAreas: known(c?.concernAreas, NURI_AREA, OLD_CONCERN),
 });
+
+// 예전 저장값(발달 영역 코드 lang·cog·soc·gross·fine) → 지금 이름
+const OLD_LIKE: Record<string, PlayCorner> = { lang: "language", cog: "science", soc: "role", gross: "physical", fine: "art" };
+const OLD_CONCERN: Record<string, NuriArea> = { lang: "comm", cog: "nature", soc: "social", gross: "body", fine: "body" };
+function known<K extends string>(codes: string[] | undefined, names: Record<K, unknown>, old: Record<string, K>): K[] {
+  const out = (codes ?? []).map((c) => (c in names ? (c as K) : old[c])).filter(Boolean);
+  return [...new Set(out)];
+}
 
 /**
  * 관심 저장 (온보딩·MY에서). 아이 행과 따로 update해서,

@@ -86,9 +86,31 @@ export type SurveyResult = {
 // - 영역: 설문 focus와 concernAreas 둘 다 → focus만 → concernAreas만 (설문이 없으면 concernAreas만)
 // - 모두 잘하고 있으면(focus·concernAreas 없음) likes 영역부터
 // - 균형 맞출 때(한 영역에 몰림) 덜 해본 영역 중 위 순서 → likes 순으로
+// - 부모가 고르는 이름(놀이 영역·누리과정 영역)은 추천할 때 areas로 발달 영역에 연결
 export type ChildPrefs = {
-  likes: Area[];        // 좋아하는 놀이 종류 (소리·생각·주고받기·몸·손 놀이 = 영역 코드)
-  concernAreas: Area[]; // 더 함께 놀아 주고 싶은 영역
+  likes: PlayCorner[];      // 좋아하는 놀이 (어린이집·유치원 흥미 영역)
+  concernAreas: NuriArea[]; // 더 함께 놀아 주고 싶은 영역 (누리과정 5개 영역)
+};
+
+export type PlayCorner = "language" | "math" | "blocks" | "role" | "art" | "music" | "science" | "physical";
+export const PLAY_CORNER: Record<PlayCorner, { label: string; areas: Area[] }> = {
+  language: { label: "언어영역", areas: ["lang"] },
+  math: { label: "수조작영역", areas: ["cog", "fine"] },
+  blocks: { label: "쌓기영역", areas: ["fine", "cog"] },
+  role: { label: "역할영역", areas: ["soc", "lang"] },
+  art: { label: "미술영역", areas: ["fine"] },
+  music: { label: "음률영역", areas: ["lang", "gross"] },
+  science: { label: "과학영역", areas: ["cog"] },
+  physical: { label: "신체영역", areas: ["gross"] },
+};
+
+export type NuriArea = "body" | "comm" | "social" | "arts" | "nature";
+export const NURI_AREA: Record<NuriArea, { label: string; desc: string; areas: Area[] }> = {
+  body: { label: "신체운동·건강", desc: "몸을 움직이고 균형 잡기", areas: ["gross", "fine"] },
+  comm: { label: "의사소통", desc: "말하기·듣기·그림책", areas: ["lang"] },
+  social: { label: "사회관계", desc: "또래·가족과 어울리기", areas: ["soc"] },
+  arts: { label: "예술경험", desc: "그리기·노래·표현하기", areas: ["fine"] },
+  nature: { label: "자연탐구", desc: "관찰하고 궁금해하기", areas: ["cog"] },
 };
 
 // ── 기능 2. 맞춤 놀이 추천 ───────────────────────────────

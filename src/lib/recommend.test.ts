@@ -1,6 +1,6 @@
 // 추천 규칙 점검: npx tsx src/lib/recommend.test.ts
 import assert from "node:assert/strict";
-import type { Play, PlayLog, Reaction, Done, SurveyResult } from "@/types";
+import type { NuriArea, Play, PlayCorner, PlayLog, Reaction, Done, SurveyResult } from "@/types";
 import { areaPriority, firstRecommendation, nextRecommendation, pickInArea } from "./recommend";
 
 const mk = (id: string, series: string, step: 1 | 2 | 3, area: Play["area"]): Play => ({
@@ -46,16 +46,16 @@ assert.equal(                                                                   
 
 // 부모 관심(ChildPrefs)
 const G = [...PLAYS, mk("g1", "g", 1, "gross"), mk("g2", "g", 2, "gross"), mk("s1", "s", 1, "soc")];
-const prefs = (concernAreas: Play["area"][], likes: Play["area"][] = []) => ({ concernAreas, likes });
-assert.deepEqual(areaPriority(result, prefs(["fine", "soc"])), ["fine", "lang", "soc"]); // 둘 다 → focus만 → 부모 선택만
-assert.equal(firstRecommendation(result, 24, G, prefs(["fine"]))!.play.id, "c1");        // focus∩선택(소근육)이 1순위
-assert.equal(firstRecommendation(null, 24, G, prefs(["soc"]))!.play.id, "s1");           // 설문 없으면 부모 선택 영역
+const prefs = (concernAreas: NuriArea[], likes: PlayCorner[] = []) => ({ concernAreas, likes });
+assert.deepEqual(areaPriority(result, prefs(["arts", "social"])), ["fine", "lang", "soc"]); // 둘 다 → focus만 → 부모 선택만
+assert.equal(firstRecommendation(result, 24, G, prefs(["arts"]))!.play.id, "c1");        // focus∩선택(소근육)이 1순위
+assert.equal(firstRecommendation(null, 24, G, prefs(["social"]))!.play.id, "s1");           // 설문 없으면 부모 선택 영역
 const allGood: SurveyResult = { ...result, focus: [], startStep: { lang: 3, cog: 3, soc: 3, gross: 2, fine: 3 } };
-assert.equal(firstRecommendation(allGood, 24, G, prefs([], ["gross"]))!.play.id, "g2");  // 모두 ③이면 좋아하는 놀이, 설문 단계
+assert.equal(firstRecommendation(allGood, 24, G, prefs([], ["physical"]))!.play.id, "g2");  // 모두 ③이면 좋아하는 놀이, 설문 단계
 assert.equal(                                                                            // 균형 이동 때 좋아하는 영역 먼저
   nextRecommendation(allGood, 24,
     [log("a1", "done", "enjoyed"), log("a2", "done", "enjoyed"), log("b1", "done", "neutral")],
-    G, prefs([], ["gross"]))!.play.area,
+    G, prefs([], ["physical"]))!.play.area,
   "gross",
 );
 assert.equal(pickInArea("lang", result, 24, "a1", [], G)!.play.id, "b1");                   // 영역 고르기: 지금 놀이 빼고 같은 단계
