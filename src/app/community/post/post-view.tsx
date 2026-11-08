@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import { Button, TextButton } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { PrivacyCheckDialog } from "@/components/PrivacyCheckDialog";
 import { timeAgo } from "@/lib/dates";
 import { DEMO_POSTS } from "@/lib/demo-posts";
 import { addComment, deleteComment, fetchComments, type Comment } from "@/lib/comments";
+import { findIdentifyingTerms } from "@/lib/privacy";
 import { canDelete, currentChild, deletePost, myUserId, useLocalData } from "@/lib/local-store";
 import { BOARD_LABEL } from "@/types";
 
@@ -20,6 +22,7 @@ export default function PostView() {
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checkTerms, setCheckTerms] = useState<string[]>([]);
 
   useEffect(() => {
     if (id && !isDemo) fetchComments(id).then(setComments);
@@ -37,10 +40,19 @@ export default function PostView() {
   const now = new Date();
   const child = currentChild(data);
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     const body = text.trim();
     if (!body || busy || isDemo) return;
+    // 실명·기관명으로 보이는 표현이 있으면 올리기 전에 한 번 더 확인
+    const terms = findIdentifyingTerms(body);
+    if (terms.length) setCheckTerms(terms);
+    else send();
+  }
+
+  async function send() {
+    setCheckTerms([]);
+    const body = text.trim();
     setBusy(true);
     const c = await addComment(id, child ? `${child.nickname}네` : "익명", body);
     if (c) {
@@ -119,6 +131,7 @@ export default function PostView() {
           </Button>
         </form>
       )}
+      <PrivacyCheckDialog terms={checkTerms} onEdit={() => setCheckTerms([])} onConfirm={send} />
     </main>
   );
 }
