@@ -202,8 +202,6 @@ export function savePost(p: Omit<Post, "id" | "createdAt" | "comments">): Post {
 
 /** 지금 로그인한 보호자 id (내 글 구분용) */
 export const myUserId = () => userId;
-/** 운영자면 모든 글·댓글을 지울 수 있음 (서버 RLS도 is_admin으로 허용) */
-export const isAdmin = () => admin;
 /** 이 글·댓글을 지울 수 있는지: 내가 쓴 것이거나 운영자 */
 export const canDelete = (authorId?: string) => !!userId && (admin || authorId === userId);
 

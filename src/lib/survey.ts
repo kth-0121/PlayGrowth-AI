@@ -20,7 +20,6 @@ export const QUESTION_SET = questionsJson as QuestionSet;
 export const AREA_ORDER: Area[] = ["lang", "cog", "soc", "gross", "fine"];
 export const TEMP_ORDER: TempItem[] = ["explore", "cautious", "initiative", "recovery"];
 
-export const LEVEL_MARK: Record<Level, string> = { 0: "아직이에요", 1: "①", 2: "②", 3: "③" };
 export const FREQUENCY_LABEL: Record<Frequency, string> = {
   often: "자주 그래요",
   sometimes: "가끔 그래요",
