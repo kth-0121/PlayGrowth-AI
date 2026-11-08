@@ -157,13 +157,13 @@ export default function OnboardingPage() {
               <input value={center} onChange={(e) => setCenter(e.target.value)} placeholder="예: 새싹발달센터" className={INPUT} />
             </Field>
             <Field label="대기 신청한 날">
-              <input type="date" value={waitStart} onChange={(e) => setWaitStart(e.target.value)} className={INPUT} />
+              <input type="date" min="2020-01-01" max="2099-12-31" value={waitStart} onChange={(e) => setWaitStart(e.target.value)} className={INPUT} />
             </Field>
             <Field
               label="첫 상담 예정일"
               hint={leftDays !== null && leftDays > 0 && <span className="text-[13px] font-medium text-sage-dark">{leftDays}일 남았어요</span>}
             >
-              <input type="date" value={consultDate} onChange={(e) => setConsultDate(e.target.value)} className={INPUT} />
+              <input type="date" min="2020-01-01" max="2099-12-31" value={consultDate} onChange={(e) => setConsultDate(e.target.value)} className={INPUT} />
             </Field>
           </div>
         )}

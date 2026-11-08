@@ -225,11 +225,11 @@ export default function MyPage() {
           </label>
           <label className="flex flex-col gap-2">
             <span className="text-[13px] font-semibold text-sub">대기 신청한 날</span>
-            <input type="date" value={waitStart} onChange={(e) => setWaitStart(e.target.value)} className={INPUT} />
+            <input type="date" min="2020-01-01" max="2099-12-31" value={waitStart} onChange={(e) => setWaitStart(e.target.value)} className={INPUT} />
           </label>
           <label className="flex flex-col gap-2">
             <span className="text-[13px] font-semibold text-sub">첫 상담 예정일</span>
-            <input type="date" value={consultDate} onChange={(e) => setConsultDate(e.target.value)} className={INPUT} />
+            <input type="date" min="2020-01-01" max="2099-12-31" value={consultDate} onChange={(e) => setConsultDate(e.target.value)} className={INPUT} />
           </label>
           <div className="mt-2 flex gap-2">
             <Button
