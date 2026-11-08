@@ -12,7 +12,7 @@ import { H1, PageHeader } from "@/components/PageHeader";
 const INPUT =
   "h-[52px] w-full rounded-[12px] border border-line bg-card px-4 text-[15px] font-medium outline-none placeholder:text-mute focus:border-sage focus:ring-[0.5px] focus:ring-sage";
 
-const PUBLIC = ["/"];
+const PUBLIC = ["/", "/welcome"];
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const path = usePathname();

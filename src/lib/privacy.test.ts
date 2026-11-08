@@ -1,6 +1,6 @@
 // 실명/기관명 탐지 점검: npx tsx src/lib/privacy.test.ts
 import assert from "node:assert/strict";
-import { DEMO_POSTS } from "./demo-posts";
+import { DEMO_POSTS } from "../mocks/community";
 import { findIdentifyingTerms } from "./privacy";
 
 const hit = (text: string, expected: string[]) => assert.deepEqual(findIdentifyingTerms(text), expected, text);

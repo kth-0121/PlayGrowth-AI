@@ -15,7 +15,15 @@ const TABS: { href: string; label: string; char: Char; match: (p: string) => boo
 ];
 
 // 한 가지 일에 집중하는 화면에서는 탭바를 숨김
-const HIDDEN = [/^\/onboarding/, /^\/survey/, /^\/play\/[^/]+\/log/, /^\/community\/write/, /^\/my\/prefs/];
+const HIDDEN = [
+  /^\/welcome/,
+  /^\/onboarding/,
+  /^\/survey/,
+  /^\/play\/[^/]+\/(log|go)/,
+  /^\/logs\/[^/]+/,
+  /^\/community\/(write|post|[^/]+)/,
+  /^\/my\/prefs/,
+];
 
 export default function TabBar() {
   const pathname = usePathname();

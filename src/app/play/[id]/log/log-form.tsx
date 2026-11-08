@@ -9,6 +9,7 @@ import { Card } from "@/components/Card";
 import { AreaChip, DONE_LABEL, REACTION_LABEL, TimeChip } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
+import { PageSkeleton } from "@/components/Skeleton";
 import { H1, PageHeader } from "@/components/PageHeader";
 import { callName } from "@/lib/copy";
 import { ageInMonths } from "@/lib/age";
@@ -29,7 +30,7 @@ export default function LogForm({ playId, playTitle, area }: { playId: string; p
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<{ next: Pick | null } | null>(null);
 
-  if (!data) return <main className="flex-1" />;
+  if (!data) return <PageSkeleton withTab={false} />;
   const child = currentChild(data);
   if (!child) {
     return (

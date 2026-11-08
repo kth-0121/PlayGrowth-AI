@@ -8,7 +8,7 @@ import { Fab, TextButton } from "@/components/Button";
 import { AreaChip, ReactionTag } from "@/components/Chip";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
-import { PageHeader } from "@/components/PageHeader";
+import { PageSkeleton } from "@/components/Skeleton";
 import { TAB_FAB_SAFE, TAB_SAFE } from "@/components/TabBar";
 import { callName } from "@/lib/copy";
 import { logTimeLabel, thisWeek, WEEKDAY, ymd } from "@/lib/dates";
@@ -28,12 +28,12 @@ export default function LogsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<View>("date");
 
-  if (!data) return <main className={`flex-1 ${TAB_SAFE}`} />;
+  if (!data) return <PageSkeleton />;
   const child = currentChild(data);
   if (!child) {
     return (
       <main className={`flex flex-1 flex-col gap-6 px-5 ${TAB_SAFE}`}>
-        <PageHeader logo />
+        <div className="h-8" aria-hidden />
         <EmptyState text="아이 정보를 넣고 놀이를 하면 여기에 일기처럼 쌓여요." action="아이 정보 입력" href="/onboarding" />
       </main>
     );
@@ -57,7 +57,7 @@ export default function LogsPage() {
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_FAB_SAFE}`}>
-      <PageHeader logo />
+      <div className="h-8" aria-hidden />
 
       <div className="mt-2 flex items-baseline justify-between gap-3">
         <h1 className="text-[22px] font-extrabold tracking-[-0.035em]">{callName(child.nickname)} 놀이 일기</h1>
@@ -198,7 +198,7 @@ function TimelineItem({ log, recent }: { log: PlayLog; recent: boolean }) {
         aria-hidden
       />
       <p className="text-[12px] font-semibold text-mute">{logTimeLabel(log.createdAt)}</p>
-      <article className="mt-2 rounded-[16px] bg-card p-3.5">
+      <Link href={`/logs/${log.id}`} className="pressable mt-2 block rounded-[16px] bg-card p-3.5">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-[15px] font-bold leading-[1.35]">{play?.title ?? "삭제된 놀이"}</h2>
           {play && <AreaChip area={play.area} />}
@@ -215,7 +215,7 @@ function TimelineItem({ log, recent }: { log: PlayLog; recent: boolean }) {
           <ReactionTag reaction={log.reaction} />
           <ReactionTag done={log.done} />
         </div>
-      </article>
+      </Link>
     </li>
   );
 }

@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Gowun_Batang } from "next/font/google";
 import { Suspense } from "react";
+import { OfflineBanner } from "@/components/StatusViews";
 import TabBar from "@/components/TabBar";
+import { Toaster } from "@/components/Toast";
 import "./globals.css";
 import AuthGate from "@/components/auth-gate";
 
@@ -37,10 +39,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh">
         {/* 데스크톱에서는 480px 앱 화면처럼 가운데 정렬 */}
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-bg">
-          <AuthGate>{children}</AuthGate>
+          <OfflineBanner />
+          {/* usePathname을 쓰므로 Suspense 안에 (동적 경로 미리 렌더 대비) */}
+          <Suspense fallback={<main className="flex-1" />}>
+            <AuthGate>{children}</AuthGate>
+          </Suspense>
           <Suspense fallback={null}>
             <TabBar />
           </Suspense>
+          <Toaster />
         </div>
       </body>
     </html>

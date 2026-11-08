@@ -4,11 +4,13 @@ import { useState } from "react";
 import { BOARD_LABEL, type Board } from "@/types";
 import { Fab } from "@/components/Button";
 import { ListGroup, ListRow } from "@/components/ListRow";
-import { H1, PageHeader } from "@/components/PageHeader";
+import { H1 } from "@/components/PageHeader";
+import { PageSkeleton } from "@/components/Skeleton";
+import { NoResult } from "@/components/StatusViews";
 import { TAB_FAB_SAFE } from "@/components/TabBar";
 import { timeAgo } from "@/lib/dates";
-import { DEMO_POSTS } from "@/lib/demo-posts";
-import { useLocalData } from "@/lib/local-store";
+import { useLocalData, type Post } from "@/lib/local-store";
+import { DEMO_COMMENTS, DEMO_POSTS } from "@/mocks/community";
 
 const BOARDS: { key: Board; label: string }[] = [
   { key: "review", label: "놀이 후기" },
@@ -24,17 +26,19 @@ export default function CommunityPage() {
   const data = useLocalData();
   const [board, setBoard] = useState<Board>("review");
 
-  // 서버 렌더 중(data 없음)에는 현재 시각을 읽지 않음
-  const posts = data ? [...data.posts, ...DEMO_POSTS].filter((p) => p.board === board) : [];
-  const now = data ? new Date() : null;
+  if (!data) return <PageSkeleton />;
+  const now = new Date();
+  const posts = [...data.posts, ...DEMO_POSTS].filter((p) => p.board === board);
+  // 예시 글은 예시 댓글 수, 내 글·서버 글은 서버 댓글 수
+  const commentCount = (p: Post) => (DEMO_POSTS.includes(p) ? DEMO_COMMENTS.filter((c) => c.postId === p.id).length : p.comments);
 
   return (
     <main className={`flex flex-1 flex-col px-5 ${TAB_FAB_SAFE}`}>
-      <PageHeader logo />
+      <div className="h-8" aria-hidden />
       <H1 className="mt-2">커뮤니티</H1>
       <p className="mt-1 text-[13.5px] font-medium text-sub">같은 시간을 보내는 부모들의 {BOARD_LABEL[board]}</p>
 
-      <div role="tablist" className="mt-4 flex gap-5 border-b border-line">
+      <div role="tablist" aria-label="게시판" className="mt-4 flex gap-5 border-b border-line">
         {BOARDS.map((b) => {
           const on = board === b.key;
           return (
@@ -53,22 +57,32 @@ export default function CommunityPage() {
         })}
       </div>
 
-      <ListGroup className="mt-4">
-        {posts.map((p) => (
-          <ListRow key={p.id} href={`/community/post?id=${p.id}`}>
-            <p className="text-[15px] font-bold leading-[1.4]">{p.title}</p>
-            {isUnverifiedClaim(p.title + p.body) && (
-              <span className="mt-1.5 inline-flex rounded-[7px] bg-warm px-2 py-1 text-[11.5px] font-bold leading-none text-sub">
-                검증되지 않은 정보
-              </span>
-            )}
-            <p className="mt-1 line-clamp-2 text-[13.5px] font-medium leading-[1.55] text-sub">{p.body}</p>
-            <p className="mt-1.5 text-[12px] font-medium text-mute">
-              {p.nickname} · {now && timeAgo(p.createdAt, now)} · 댓글 {p.comments}
-            </p>
-          </ListRow>
-        ))}
-      </ListGroup>
+      <p className="mt-3 text-[12px] font-medium text-sub">
+        실명·센터 이름은 쓰지 않아요. 효과를 단정하는 글에는 &lsquo;검증되지 않은 정보&rsquo;가 붙어요.
+      </p>
+
+      <div className="mt-3">
+        {posts.length === 0 ? (
+          <NoResult text="아직 글이 없어요. 첫 이야기를 남겨 보세요." />
+        ) : (
+          <ListGroup>
+            {posts.map((p) => (
+              <ListRow key={p.id} href={`/community/post?id=${p.id}`}>
+                {(p.unverified || isUnverifiedClaim(p.title + p.body)) && (
+                  <span className="mb-1.5 inline-flex rounded-[7px] bg-neutral-chip px-2 py-1 text-[12px] font-bold leading-none text-sub">
+                    검증되지 않은 정보
+                  </span>
+                )}
+                <p className="text-[15px] font-bold leading-[1.4]">{p.title}</p>
+                <p className="mt-1 line-clamp-2 text-[13.5px] font-medium leading-[1.55] text-sub">{p.body}</p>
+                <p className="mt-1.5 text-[12px] font-medium text-mute">
+                  {p.nickname} · {timeAgo(p.createdAt, now)} · 댓글 {commentCount(p)}
+                </p>
+              </ListRow>
+            ))}
+          </ListGroup>
+        )}
+      </div>
 
       <p className="mt-4 text-[12px] font-medium leading-[1.5] text-sub">
         닉네임으로 활동해요. 아이 실명이나 센터 이름은 쓰지 말아 주세요.

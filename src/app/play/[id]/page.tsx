@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Logo } from "@/components/Icon";
+import { Suspense } from "react";
+import { PageSkeleton } from "@/components/Skeleton";
 import { AreaChip, MetaChip, TimeChip } from "@/components/Chip";
-import { Illustration } from "@/components/Illustration";
+import { PlayArt } from "@/components/PlayArt";
 import { getPlay, PLAYS } from "@/lib/recommend";
 import PlayCta from "./play-cta";
+import SaveButton from "./save-button";
+import BackButton from "./back-button";
 import RecommendReason from "./recommend-reason";
 
 // 놀이는 data/plays.json에 고정 → 빌드할 때 카드 페이지를 미리 만들어 둠
@@ -12,8 +15,18 @@ export function generateStaticParams() {
   return PLAYS.map((p) => ({ id: p.id }));
 }
 
-export default async function PlayDetailPage({ params }: PageProps<"/play/[id]">) {
-  const { id } = await params;
+// params는 Suspense 안에서 읽어야 화면 이동이 바로 됨 (cacheComponents)
+export default function PlayDetailPage({ params }: PageProps<"/play/[id]">) {
+  return (
+    <Suspense fallback={<PageSkeleton withTab={false} />}>
+      {params.then(({ id }) => (
+        <PlayDetail id={id} />
+      ))}
+    </Suspense>
+  );
+}
+
+function PlayDetail({ id }: { id: string }) {
   const play = getPlay(id);
   if (!play) notFound();
   const no = PLAYS.findIndex((p) => p.id === play.id) + 1;
@@ -22,10 +35,11 @@ export default async function PlayDetailPage({ params }: PageProps<"/play/[id]">
     // 하단: 탭바 74 + CTA 52 + 여백
     <main className="flex-1 bg-paper px-5 pb-[calc(170px+env(safe-area-inset-bottom))]">
       <header className="flex h-14 items-center justify-between">
-        <Link href="/" aria-label="홈으로">
-          <Logo />
-        </Link>
-        <span className="text-[12px] font-semibold tracking-[0.04em] text-mute">TODAY · No.{no}</span>
+        <BackButton />
+        <div className="flex items-center gap-1">
+          <span className="text-[12px] font-semibold tracking-[0.04em] text-mute">TODAY · No.{no}</span>
+          <SaveButton playId={play.id} />
+        </div>
       </header>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -39,7 +53,7 @@ export default async function PlayDetailPage({ params }: PageProps<"/play/[id]">
       </h1>
       <RecommendReason playId={play.id} />
 
-      <Illustration height={170} variant="sage" seed={no} className="-mx-5 mt-6" />
+      <PlayArt play={play} height={190} variant="sage" className="-mx-5 mt-6" />
 
       <section className="flex gap-3 border-b border-line py-[18px]">
         <h2 className="w-[52px] shrink-0 text-[13.5px] font-semibold text-sub">준비물</h2>
